@@ -119,6 +119,8 @@ def generate_pdf():
                 vol['event_label'] = event['name']
             if not vol.get('expiry') and event.get('expiry_date'):
                 vol['expiry'] = event['expiry_date']
+            if not vol.get('org') and event.get('org_name'):
+                vol['org'] = event['org_name']
             enriched.append(vol)
 
         log.info(f"Generating PDF for {len(enriched)} volunteers")
@@ -161,6 +163,8 @@ def generate_single():
             vol['event_label'] = event['name']
         if not vol.get('expiry') and event.get('expiry_date'):
             vol['expiry'] = event['expiry_date']
+        if not vol.get('org') and event.get('org_name'):
+            vol['org'] = event['org_name']
 
         log.info(f"Generating single pass for {vol.get('id', 'unknown')}")
         buf = build_pdf_bytes([vol])

@@ -308,7 +308,77 @@ def deva(text, pt=22, bold=False, color=(26,26,26)):
         except Exception:
             pass  # fall through to PIL
 
-    # ── PIL fallback (Linux/Mac or if GDI fails) ──────────────────
+    # ── Linux: uharfbuzz + freetype-py shaping (proper conjuncts) ──
+    try:
+        import uharfbuzz as hb
+        import freetype
+
+        SS = 4
+        px = int(pt * SS * 1.33)
+
+        # Load font into HarfBuzz
+        with open(font_path, 'rb') as f:
+            font_data = f.read()
+        hb_blob   = hb.Blob(font_data)
+        hb_face   = hb.Face(hb_blob)
+        hb_font   = hb.Font(hb_face)
+        hb_font.scale = (px * 64, px * 64)
+
+        # Shape the text
+        buf = hb.Buffer()
+        buf.add_str(text)
+        buf.guess_segment_properties()
+        hb.shape(hb_font, buf, {})
+
+        infos  = buf.glyph_infos
+        posits = buf.glyph_positions
+
+        # Measure total advance width
+        total_w = sum(p.x_advance for p in posits) // 64
+        total_h = int(px * 1.6)
+        pad     = 4
+
+        # Render glyphs with freetype
+        face = freetype.Face(font_path)
+        face.set_pixel_sizes(0, px)
+
+        img_w = max(total_w + pad * 2, 1)
+        img_h = max(total_h + pad * 2, 1)
+        canvas_arr = [0] * (img_w * img_h)
+
+        pen_x = pad * 64
+        baseline = int(px * 1.1) + pad
+
+        for info, pos in zip(infos, posits):
+            glyph_id = info.codepoint
+            face.load_glyph(glyph_id, freetype.FT_LOAD_RENDER)
+            bitmap = face.glyph.bitmap
+            bx = (pen_x + pos.x_offset) // 64 + face.glyph.bitmap_left
+            by = baseline - face.glyph.bitmap_top + pos.y_offset // 64
+
+            for row in range(bitmap.rows):
+                for col in range(bitmap.width):
+                    px_val = bitmap.buffer[row * bitmap.pitch + col]
+                    cx = bx + col
+                    cy = by + row
+                    if 0 <= cx < img_w and 0 <= cy < img_h:
+                        existing = canvas_arr[cy * img_w + cx]
+                        canvas_arr[cy * img_w + cx] = min(255, existing + px_val)
+
+            pen_x += pos.x_advance
+
+        r, g, b = color
+        rgba_data = []
+        for alpha in canvas_arr:
+            rgba_data.extend([r, g, b, alpha])
+
+        hi = Image.frombytes('RGBA', (img_w, img_h), bytes(rgba_data))
+        return hi.resize((max(1, img_w // SS), max(1, img_h // SS)), Image.LANCZOS)
+
+    except Exception:
+        pass  # fall through to basic PIL
+
+    # ── Basic PIL fallback (last resort, no shaping) ───────────────
     ss = 8 if pt < 14 else 4
     px = int(pt * ss * 1.33)
     try:   pil_font = ImageFont.truetype(font_path, px)

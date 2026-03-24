@@ -31,10 +31,20 @@ FONT_DIR   = os.path.join(SCRIPT_DIR, 'fonts')
 def font(name):
     return os.path.join(FONT_DIR, name)
 
-pdfmetrics.registerFont(TTFont('PP-Bold',  font('Poppins-Bold.ttf')))
-pdfmetrics.registerFont(TTFont('PP',       font('Poppins-Regular.ttf')))
-pdfmetrics.registerFont(TTFont('PP-Light', font('Poppins-Light.ttf')))
-pdfmetrics.registerFont(TTFont('PP-Med',   font('Poppins-Medium.ttf')))
+import logging as _log
+try:
+    pdfmetrics.registerFont(TTFont('PP-Bold',  font('Poppins-Bold.ttf')))
+    pdfmetrics.registerFont(TTFont('PP',       font('Poppins-Regular.ttf')))
+    pdfmetrics.registerFont(TTFont('PP-Light', font('Poppins-Light.ttf')))
+    pdfmetrics.registerFont(TTFont('PP-Med',   font('Poppins-Medium.ttf')))
+    _log.info("Poppins fonts loaded OK")
+except Exception as _fe:
+    _log.warning(f"Poppins fonts not found ({_fe}) — will use Helvetica fallback")
+    from reportlab.lib.fonts import addMapping
+    for _n in ['PP-Bold','PP','PP-Light','PP-Med']:
+        try: pdfmetrics.registerFont(TTFont(_n, font('Poppins-Regular.ttf')))
+        except: pass
+
 DEVA_BOLD = font('NotoSansDevanagari-Bold.ttf')
 DEVA_REG  = font('NotoSansDevanagari-Regular.ttf')
 SS = 4  # supersampling scale

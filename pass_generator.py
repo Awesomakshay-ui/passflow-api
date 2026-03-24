@@ -31,20 +31,10 @@ FONT_DIR   = os.path.join(SCRIPT_DIR, 'fonts')
 def font(name):
     return os.path.join(FONT_DIR, name)
 
-import logging as _log
-try:
-    pdfmetrics.registerFont(TTFont('PP-Bold',  font('Poppins-Bold.ttf')))
-    pdfmetrics.registerFont(TTFont('PP',       font('Poppins-Regular.ttf')))
-    pdfmetrics.registerFont(TTFont('PP-Light', font('Poppins-Light.ttf')))
-    pdfmetrics.registerFont(TTFont('PP-Med',   font('Poppins-Medium.ttf')))
-    _log.info("Poppins fonts loaded OK")
-except Exception as _fe:
-    _log.warning(f"Poppins fonts not found ({_fe}) — will use Helvetica fallback")
-    from reportlab.lib.fonts import addMapping
-    for _n in ['PP-Bold','PP','PP-Light','PP-Med']:
-        try: pdfmetrics.registerFont(TTFont(_n, font('Poppins-Regular.ttf')))
-        except: pass
-
+pdfmetrics.registerFont(TTFont('PP-Bold',  font('Poppins-Bold.ttf')))
+pdfmetrics.registerFont(TTFont('PP',       font('Poppins-Regular.ttf')))
+pdfmetrics.registerFont(TTFont('PP-Light', font('Poppins-Light.ttf')))
+pdfmetrics.registerFont(TTFont('PP-Med',   font('Poppins-Medium.ttf')))
 DEVA_BOLD = font('NotoSansDevanagari-Bold.ttf')
 DEVA_REG  = font('NotoSansDevanagari-Regular.ttf')
 SS = 4  # supersampling scale
@@ -318,112 +308,7 @@ def deva(text, pt=22, bold=False, color=(26,26,26)):
         except Exception:
             pass  # fall through to PIL
 
-    # ── Linux: uharfbuzz + freetype-py shaping (proper conjuncts) ──
-    try:
-        import uharfbuzz as hb
-        import freetype
-        import numpy as np
-        import logging
-        log = logging.getLogger(__name__)
-
-        SS = 4
-        px = int(pt * SS * 1.33)
-
-        # Load font into HarfBuzz
-        with open(font_path, 'rb') as f:
-            font_data = f.read()
-        hb_blob = hb.Blob(font_data)
-        hb_face = hb.Face(hb_blob)
-        hb_font = hb.Font(hb_face)
-        hb_font.scale = (px * 64, px * 64)
-
-        # Shape the text
-        buf = hb.Buffer()
-        buf.add_str(text)
-        buf.guess_segment_properties()
-        hb.shape(hb_font, buf, {})
-
-        infos  = buf.glyph_infos
-        posits = buf.glyph_positions
-
-        total_w = max(sum(p.x_advance for p in posits) // 64, 1)
-        total_h = int(px * 1.8)  # generous height for matras
-        pad = int(px * 0.2)
-
-        # Render glyphs with freetype into numpy array
-        face = freetype.Face(font_path)
-        face.set_pixel_sizes(0, px)
-
-        img_w = total_w + pad * 2
-        img_h = total_h + pad * 2
-        canvas = np.zeros((img_h, img_w), dtype=np.float32)
-        baseline = int(px * 1.3) + pad
-        pen_x = pad * 64
-
-        for info, pos in zip(infos, posits):
-            glyph_id = info.codepoint
-            try:
-                face.load_glyph(glyph_id, freetype.FT_LOAD_RENDER)
-            except Exception:
-                pen_x += pos.x_advance
-                continue
-
-            bmp = face.glyph.bitmap
-            if bmp.rows == 0 or bmp.width == 0:
-                pen_x += pos.x_advance
-                continue
-
-            bx = (pen_x + pos.x_offset) // 64 + face.glyph.bitmap_left
-            by = baseline - face.glyph.bitmap_top + pos.y_offset // 64
-
-            # Convert bitmap buffer to numpy
-            bmp_arr = np.array(bmp.buffer, dtype=np.uint8).reshape(bmp.rows, bmp.pitch)
-            bmp_arr = bmp_arr[:, :bmp.width].astype(np.float32)
-
-            # Clip to canvas bounds
-            x0 = max(bx, 0); x1 = min(bx + bmp.width, img_w)
-            y0 = max(by, 0); y1 = min(by + bmp.rows, img_h)
-            bx0 = x0 - bx; bx1 = bx0 + (x1 - x0)
-            by0 = y0 - by; by1 = by0 + (y1 - y0)
-
-            if x1 > x0 and y1 > y0:
-                canvas[y0:y1, x0:x1] = np.minimum(
-                    255.0,
-                    canvas[y0:y1, x0:x1] + bmp_arr[by0:by1, bx0:bx1]
-                )
-
-            pen_x += pos.x_advance
-
-        # Crop to actual content
-        mask = canvas > 8
-        if not mask.any():
-            raise ValueError("Empty render")
-        rows_with = np.where(mask.any(axis=1))[0]
-        cols_with = np.where(mask.any(axis=0))[0]
-        y0c, y1c = max(rows_with[0] - 2, 0), min(rows_with[-1] + 4, img_h)
-        x0c, x1c = max(cols_with[0] - 2, 0), min(cols_with[-1] + 4, img_w)
-        canvas = canvas[y0c:y1c, x0c:x1c]
-
-        cr, cg, cb = color
-        alpha = np.clip(canvas, 0, 255).astype(np.uint8)
-        rgba  = np.zeros((*alpha.shape, 4), dtype=np.uint8)
-        rgba[:, :, 0] = cr
-        rgba[:, :, 1] = cg
-        rgba[:, :, 2] = cb
-        rgba[:, :, 3] = alpha
-
-        hi = Image.fromarray(rgba, 'RGBA')
-        # Downscale for crisp antialiased output
-        out_w = max(1, hi.width  // SS)
-        out_h = max(1, hi.height // SS)
-        return hi.resize((out_w, out_h), Image.LANCZOS)
-
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning(f"uharfbuzz render failed for '{text[:20]}': {e}")
-        pass  # fall through to basic PIL
-
-    # ── Basic PIL fallback (last resort, no shaping) ───────────────
+    # ── PIL fallback (Linux/Mac or if GDI fails) ──────────────────
     ss = 8 if pt < 14 else 4
     px = int(pt * ss * 1.33)
     try:   pil_font = ImageFont.truetype(font_path, px)

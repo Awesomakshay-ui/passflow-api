@@ -6,5 +6,3 @@ Pillow==10.4.0
 openpyxl==3.1.5
 numpy==1.26.4
 fonttools==4.53.1
-uharfbuzz==0.39.3
-freetype-py==2.4.0

@@ -312,6 +312,9 @@ def deva(text, pt=22, bold=False, color=(26,26,26)):
     try:
         import uharfbuzz as hb
         import freetype
+        import numpy as np
+        import logging
+        log = logging.getLogger(__name__)
 
         SS = 4
         px = int(pt * SS * 1.33)
@@ -319,9 +322,9 @@ def deva(text, pt=22, bold=False, color=(26,26,26)):
         # Load font into HarfBuzz
         with open(font_path, 'rb') as f:
             font_data = f.read()
-        hb_blob   = hb.Blob(font_data)
-        hb_face   = hb.Face(hb_blob)
-        hb_font   = hb.Font(hb_face)
+        hb_blob = hb.Blob(font_data)
+        hb_face = hb.Face(hb_blob)
+        hb_font = hb.Font(hb_face)
         hb_font.scale = (px * 64, px * 64)
 
         # Shape the text
@@ -333,49 +336,81 @@ def deva(text, pt=22, bold=False, color=(26,26,26)):
         infos  = buf.glyph_infos
         posits = buf.glyph_positions
 
-        # Measure total advance width
-        total_w = sum(p.x_advance for p in posits) // 64
-        total_h = int(px * 1.6)
-        pad     = 4
+        total_w = max(sum(p.x_advance for p in posits) // 64, 1)
+        total_h = int(px * 1.8)  # generous height for matras
+        pad = int(px * 0.2)
 
-        # Render glyphs with freetype
+        # Render glyphs with freetype into numpy array
         face = freetype.Face(font_path)
         face.set_pixel_sizes(0, px)
 
-        img_w = max(total_w + pad * 2, 1)
-        img_h = max(total_h + pad * 2, 1)
-        canvas_arr = [0] * (img_w * img_h)
-
+        img_w = total_w + pad * 2
+        img_h = total_h + pad * 2
+        canvas = np.zeros((img_h, img_w), dtype=np.float32)
+        baseline = int(px * 1.3) + pad
         pen_x = pad * 64
-        baseline = int(px * 1.1) + pad
 
         for info, pos in zip(infos, posits):
             glyph_id = info.codepoint
-            face.load_glyph(glyph_id, freetype.FT_LOAD_RENDER)
-            bitmap = face.glyph.bitmap
+            try:
+                face.load_glyph(glyph_id, freetype.FT_LOAD_RENDER)
+            except Exception:
+                pen_x += pos.x_advance
+                continue
+
+            bmp = face.glyph.bitmap
+            if bmp.rows == 0 or bmp.width == 0:
+                pen_x += pos.x_advance
+                continue
+
             bx = (pen_x + pos.x_offset) // 64 + face.glyph.bitmap_left
             by = baseline - face.glyph.bitmap_top + pos.y_offset // 64
 
-            for row in range(bitmap.rows):
-                for col in range(bitmap.width):
-                    px_val = bitmap.buffer[row * bitmap.pitch + col]
-                    cx = bx + col
-                    cy = by + row
-                    if 0 <= cx < img_w and 0 <= cy < img_h:
-                        existing = canvas_arr[cy * img_w + cx]
-                        canvas_arr[cy * img_w + cx] = min(255, existing + px_val)
+            # Convert bitmap buffer to numpy
+            bmp_arr = np.array(bmp.buffer, dtype=np.uint8).reshape(bmp.rows, bmp.pitch)
+            bmp_arr = bmp_arr[:, :bmp.width].astype(np.float32)
+
+            # Clip to canvas bounds
+            x0 = max(bx, 0); x1 = min(bx + bmp.width, img_w)
+            y0 = max(by, 0); y1 = min(by + bmp.rows, img_h)
+            bx0 = x0 - bx; bx1 = bx0 + (x1 - x0)
+            by0 = y0 - by; by1 = by0 + (y1 - y0)
+
+            if x1 > x0 and y1 > y0:
+                canvas[y0:y1, x0:x1] = np.minimum(
+                    255.0,
+                    canvas[y0:y1, x0:x1] + bmp_arr[by0:by1, bx0:bx1]
+                )
 
             pen_x += pos.x_advance
 
-        r, g, b = color
-        rgba_data = []
-        for alpha in canvas_arr:
-            rgba_data.extend([r, g, b, alpha])
+        # Crop to actual content
+        mask = canvas > 8
+        if not mask.any():
+            raise ValueError("Empty render")
+        rows_with = np.where(mask.any(axis=1))[0]
+        cols_with = np.where(mask.any(axis=0))[0]
+        y0c, y1c = max(rows_with[0] - 2, 0), min(rows_with[-1] + 4, img_h)
+        x0c, x1c = max(cols_with[0] - 2, 0), min(cols_with[-1] + 4, img_w)
+        canvas = canvas[y0c:y1c, x0c:x1c]
 
-        hi = Image.frombytes('RGBA', (img_w, img_h), bytes(rgba_data))
-        return hi.resize((max(1, img_w // SS), max(1, img_h // SS)), Image.LANCZOS)
+        cr, cg, cb = color
+        alpha = np.clip(canvas, 0, 255).astype(np.uint8)
+        rgba  = np.zeros((*alpha.shape, 4), dtype=np.uint8)
+        rgba[:, :, 0] = cr
+        rgba[:, :, 1] = cg
+        rgba[:, :, 2] = cb
+        rgba[:, :, 3] = alpha
 
-    except Exception:
+        hi = Image.fromarray(rgba, 'RGBA')
+        # Downscale for crisp antialiased output
+        out_w = max(1, hi.width  // SS)
+        out_h = max(1, hi.height // SS)
+        return hi.resize((out_w, out_h), Image.LANCZOS)
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"uharfbuzz render failed for '{text[:20]}': {e}")
         pass  # fall through to basic PIL
 
     # ── Basic PIL fallback (last resort, no shaping) ───────────────

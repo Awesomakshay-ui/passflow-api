@@ -184,6 +184,41 @@ def generate_single():
         return jsonify({"error": str(e)}), 500
 
 
-if __name__ == '__main__':
+@app.route('/debug', methods=['GET'])
+def debug():
+    """Debug endpoint to check library availability and font rendering."""
+    import sys, os
+    result = {'python': sys.version, 'platform': sys.platform, 'libs': {}, 'fonts': [], 'render_test': None}
+
+    # Check libraries
+    for lib in ['uharfbuzz', 'freetype', 'numpy', 'PIL', 'reportlab']:
+        try:
+            __import__(lib)
+            result['libs'][lib] = 'ok'
+        except ImportError as e:
+            result['libs'][lib] = str(e)
+
+    # Check fonts
+    font_dir = os.path.join(os.path.dirname(__file__), 'fonts')
+    if os.path.exists(font_dir):
+        result['fonts'] = os.listdir(font_dir)
+    else:
+        result['fonts'] = 'fonts/ directory not found'
+
+    # Try rendering a Hindi string
+    try:
+        pg = get_generator()
+        img = pg.deva('अनूप', pt=22, bold=True, color=(26, 26, 26))
+        if img:
+            result['render_test'] = f'OK — {img.width}x{img.height}px'
+        else:
+            result['render_test'] = 'deva() returned None'
+    except Exception as e:
+        result['render_test'] = f'ERROR: {e}'
+
+    return jsonify(result)
+
+
+
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)

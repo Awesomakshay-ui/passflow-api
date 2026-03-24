@@ -175,6 +175,33 @@ def qr_image(text, px=9):
 # ══════════════════════════════════════════════════════════════════
 # DEVANAGARI — supersampled FreeSerif
 # ══════════════════════════════════════════════════════════════════
+
+# Module-level cache: font file bytes and freetype/HarfBuzz objects are
+# created once per worker process and reused across all requests.
+_font_bytes_cache: dict = {}   # font_path -> bytes
+_ft_face_cache:    dict = {}   # font_path -> freetype.Face
+_hb_face_cache:    dict = {}   # font_path -> hb.Face
+
+def _font_bytes(path):
+    if path not in _font_bytes_cache:
+        with open(path, 'rb') as f:
+            _font_bytes_cache[path] = f.read()
+    return _font_bytes_cache[path]
+
+def _ft_face(path):
+    if path not in _ft_face_cache:
+        import freetype
+        _ft_face_cache[path] = freetype.Face(path)
+    return _ft_face_cache[path]
+
+def _hb_face(path):
+    if path not in _hb_face_cache:
+        import uharfbuzz as hb
+        blob = hb.Blob(_font_bytes(path))
+        _hb_face_cache[path] = hb.Face(blob)
+    return _hb_face_cache[path]
+
+
 def deva(text, pt=22, bold=False, color=(26,26,26)):
     """
     Render Devanagari using Windows GDI (ctypes) — zero extra dependencies.
@@ -311,17 +338,12 @@ def deva(text, pt=22, bold=False, color=(26,26,26)):
     # ── Linux: uharfbuzz + freetype-py shaping (proper conjuncts) ──
     try:
         import uharfbuzz as hb
-        import freetype
 
         SS = 4
         px = int(pt * SS * 1.33)
 
-        # Load font into HarfBuzz
-        with open(font_path, 'rb') as f:
-            font_data = f.read()
-        hb_blob   = hb.Blob(font_data)
-        hb_face   = hb.Face(hb_blob)
-        hb_font   = hb.Font(hb_face)
+        # Use cached HarfBuzz face (font data read once per process)
+        hb_font = hb.Font(_hb_face(font_path))
         hb_font.scale = (px * 64, px * 64)
 
         # Shape the text with explicit Devanagari properties
@@ -339,8 +361,8 @@ def deva(text, pt=22, bold=False, color=(26,26,26)):
         total_h = int(px * 1.6)
         pad     = 4
 
-        # Render glyphs with freetype
-        face = freetype.Face(font_path)
+        # Use cached freetype face (Face object created once per process)
+        face = _ft_face(font_path)
         face.set_pixel_sizes(0, px)
 
         img_w = max(total_w + pad * 2, 1)

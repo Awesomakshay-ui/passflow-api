@@ -35,7 +35,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 
-# ── Lazy-load the generator (avoids font registration errors on import) ──
+# ── Eager-load the generator and warm up font caches on startup ──────
 _generator = None
 
 def get_generator():
@@ -44,6 +44,31 @@ def get_generator():
         import pass_generator as pg
         _generator = pg
     return _generator
+
+def _warmup():
+    """Pre-load fonts and HarfBuzz/freetype objects into module-level caches
+    so the first real request is fast even after a Render cold start."""
+    try:
+        pg = get_generator()
+        # Render one throwaway pass to populate all caches
+        import io
+        from reportlab.pdfgen import canvas as rl_canvas
+        buf = io.BytesIO()
+        c = rl_canvas.Canvas(buf, pagesize=(pg.CW, pg.CH))
+        pg.draw_pass(c, {
+            'id': 'WARMUP', 'name': 'Warmup Pass', 'name_hi': 'वार्म अप',
+            'role': 'Test', 'aadhaar': '0000 0000 0000', 'mobile': '0000000000',
+            'permission': 'None', 'pass_type': 'standard',
+            'expiry': '01-01-2026', 'org': 'Warmup Org',
+            'event_label': 'Warmup Event',
+        })
+        c.save()
+        log.info("Font warm-up complete — caches populated")
+    except Exception as e:
+        log.warning(f"Warm-up failed (non-fatal): {e}")
+
+# Run warm-up once at import time (each gunicorn worker warms up independently)
+_warmup()
 
 
 def build_pdf_bytes(vols):

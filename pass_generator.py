@@ -345,7 +345,8 @@ def deva(text, pt=22, bold=False, color=(26,26,26)):
 
         img_w = max(total_w + pad * 2, 1)
         img_h = max(total_h + pad * 2, 1)
-        canvas_arr = [0] * (img_w * img_h)
+        import numpy as np
+        canvas = np.zeros((img_h, img_w), dtype=np.uint16)
 
         pen_x = pad * 64
         baseline = int(px * 1.1) + pad
@@ -357,23 +358,25 @@ def deva(text, pt=22, bold=False, color=(26,26,26)):
             bx = (pen_x + pos.x_offset) // 64 + face.glyph.bitmap_left
             by = baseline - face.glyph.bitmap_top + pos.y_offset // 64
 
-            for row in range(bitmap.rows):
-                for col in range(bitmap.width):
-                    px_val = bitmap.buffer[row * bitmap.pitch + col]
-                    cx = bx + col
-                    cy = by + row
-                    if 0 <= cx < img_w and 0 <= cy < img_h:
-                        existing = canvas_arr[cy * img_w + cx]
-                        canvas_arr[cy * img_w + cx] = min(255, existing + px_val)
+            if bitmap.rows > 0 and bitmap.width > 0:
+                glyph_arr = np.frombuffer(bytes(bitmap.buffer), dtype=np.uint8)
+                glyph_arr = glyph_arr.reshape(bitmap.rows, bitmap.pitch)[:, :bitmap.width]
+                # clip paste region to canvas bounds
+                y1 = max(0, by);  y2 = min(img_h, by + bitmap.rows)
+                x1 = max(0, bx);  x2 = min(img_w, bx + bitmap.width)
+                if y2 > y1 and x2 > x1:
+                    canvas[y1:y2, x1:x2] = np.clip(
+                        canvas[y1:y2, x1:x2] + glyph_arr[y1-by:y2-by, x1-bx:x2-bx],
+                        0, 255)
 
             pen_x += pos.x_advance
 
         r, g, b = color
-        rgba_data = []
-        for alpha in canvas_arr:
-            rgba_data.extend([r, g, b, alpha])
+        rgba = np.zeros((img_h, img_w, 4), dtype=np.uint8)
+        rgba[:, :, 0] = r; rgba[:, :, 1] = g; rgba[:, :, 2] = b
+        rgba[:, :, 3] = canvas.astype(np.uint8)
 
-        hi = Image.frombytes('RGBA', (img_w, img_h), bytes(rgba_data))
+        hi = Image.fromarray(rgba, 'RGBA')
         return hi.resize((max(1, img_w // SS), max(1, img_h // SS)), Image.LANCZOS)
 
     except Exception:

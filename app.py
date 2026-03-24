@@ -46,30 +46,26 @@ def get_generator():
     return _generator
 
 def _warmup():
-    """Warm up font caches in a background thread so gunicorn can accept
-    requests immediately — caches will be hot by the time real traffic arrives."""
-    import threading
-    def _run():
-        try:
-            pg = get_generator()
-            import io
-            from reportlab.pdfgen import canvas as rl_canvas
-            buf = io.BytesIO()
-            c = rl_canvas.Canvas(buf, pagesize=(pg.CW, pg.CH))
-            pg.draw_pass(c, {
-                'id': 'WARMUP', 'name': 'Warmup Pass', 'name_hi': 'वार्म अप',
-                'role': 'Test', 'aadhaar': '0000 0000 0000', 'mobile': '0000000000',
-                'permission': 'None', 'pass_type': 'standard',
-                'expiry': '01-01-2026', 'org': 'Warmup Org',
-                'event_label': 'Warmup Event',
-            })
-            c.save()
-            log.info("Font warm-up complete — caches populated")
-        except Exception as e:
-            log.warning(f"Warm-up failed (non-fatal): {e}")
-    threading.Thread(target=_run, daemon=True).start()
+    """Pre-load all caches before gunicorn forks workers (called with --preload).
+    Workers inherit warm caches — first request is fast in every worker."""
+    try:
+        pg = get_generator()
+        import io
+        from reportlab.pdfgen import canvas as rl_canvas
+        buf = io.BytesIO()
+        c = rl_canvas.Canvas(buf, pagesize=(pg.CW, pg.CH))
+        pg.draw_pass(c, {
+            'id': 'WARMUP', 'name': 'Warmup Pass', 'name_hi': 'वार्म अप',
+            'role': 'Test', 'aadhaar': '0000 0000 0000', 'mobile': '0000000000',
+            'permission': 'None', 'pass_type': 'standard',
+            'expiry': '01-01-2026', 'org': 'Warmup Org',
+            'event_label': 'Warmup Event',
+        })
+        c.save()
+        log.info("Font warm-up complete — caches populated")
+    except Exception as e:
+        log.warning(f"Warm-up failed (non-fatal): {e}")
 
-# Start warm-up in background — gunicorn can accept requests immediately
 _warmup()
 
 

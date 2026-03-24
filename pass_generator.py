@@ -324,10 +324,11 @@ def deva(text, pt=22, bold=False, color=(26,26,26)):
         hb_font   = hb.Font(hb_face)
         hb_font.scale = (px * 64, px * 64)
 
-        # Shape the text
+        # Shape the text with explicit Devanagari properties
         buf = hb.Buffer()
         buf.add_str(text)
         buf.guess_segment_properties()
+        buf.direction = hb.Direction.LTR  # Devanagari is always LTR
         hb.shape(hb_font, buf, {})
 
         infos  = buf.glyph_infos
@@ -586,30 +587,8 @@ def draw_pass(c, vol):
         nonlocal cur_y
         if not str(val).strip(): return
 
-        # Hindi label — white swatch background so always visible
-        SS = 8  # higher supersampling for crisp small text
-        px_size = int(9 * SS * 1.33)
-        lbl_font = None
-        for fp in [DEVA_BOLD,
-                   os.path.join(FONT_DIR, 'FreeSerifBold.ttf'),
-                   '/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf']:
-            try:
-                lbl_font = ImageFont.truetype(fp, px_size)
-                break
-            except: continue
-
-        if lbl_font:
-            probe = Image.new('RGBA', (1,1))
-            bb    = ImageDraw.Draw(probe).textbbox((0,0), hi_lbl, font=lbl_font)
-            pad   = 4
-            w, h  = bb[2]-bb[0]+pad*2, bb[3]-bb[1]+pad*2
-            swatch = Image.new('RGBA', (w, h), (255,255,255,255))
-            ImageDraw.Draw(swatch).text((-bb[0]+pad,-bb[1]+pad), hi_lbl,
-                                        font=lbl_font, fill=(80,20,20,255))
-            out = swatch.resize((max(1,w//SS), max(1,h//SS)), Image.LANCZOS)
-            ow = out.width * 0.75 * 0.5; oh = out.height * 0.75 * 0.5  # compensate for SS=8
-            buf = io.BytesIO(); out.save(buf,'PNG'); buf.seek(0)
-            c.drawImage(ImageReader(buf), LC_X, cur_y - 4.5*MM, ow, oh)
+        # Hindi label — use the same HarfBuzz-shaped renderer as names
+        place_deva(c, hi_lbl, LC_X, cur_y - 4.5*MM, pt=9, bold=True, color=(80, 20, 20))
 
         # English label
         c.setFillColor(MAROON); c.setFont('PP-Med', 6)

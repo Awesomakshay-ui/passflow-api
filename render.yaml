@@ -2,9 +2,9 @@ services:
   - type: web
     name: passflow-pass-generator
     runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --workers 2 --timeout 120 --bind 0.0.0.0:$PORT
+    buildCommand: bash build.sh
+    startCommand: gunicorn app:app --workers 2 --timeout 120 --bind 0.0.0.0:10000
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: "3.11.0"
     autoDeploy: true

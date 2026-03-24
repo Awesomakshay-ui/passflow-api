@@ -308,7 +308,78 @@ def deva(text, pt=22, bold=False, color=(26,26,26)):
         except Exception:
             pass  # fall through to PIL
 
-    # ── PIL fallback (Linux/Mac or if GDI fails) ──────────────────
+    # ── Linux: uharfbuzz + freetype-py shaping ───────────────────
+    try:
+        import uharfbuzz as hb
+        import freetype
+        import numpy as np
+
+        SS = 4
+        px = int(pt * SS * 1.33)
+
+        with open(font_path, 'rb') as f:
+            font_data = f.read()
+        hb_blob = hb.Blob(font_data)
+        hb_face = hb.Face(hb_blob)
+        hb_font = hb.Font(hb_face)
+        hb_font.scale = (px * 64, px * 64)
+
+        buf = hb.Buffer()
+        buf.add_str(text)
+        buf.guess_segment_properties()
+        hb.shape(hb_font, buf, {})
+
+        infos  = buf.glyph_infos
+        posits = buf.glyph_positions
+        total_w = max(sum(p.x_advance for p in posits) // 64, 1)
+        total_h = int(px * 1.8)
+        pad_px  = int(px * 0.2)
+
+        face = freetype.Face(font_path)
+        face.set_pixel_sizes(0, px)
+
+        img_w   = total_w + pad_px * 2
+        img_h   = total_h + pad_px * 2
+        canvas  = np.zeros((img_h, img_w), dtype=np.float32)
+        baseline = int(px * 1.3) + pad_px
+        pen_x   = pad_px * 64
+
+        for info, pos in zip(infos, posits):
+            try:
+                face.load_glyph(info.codepoint, freetype.FT_LOAD_RENDER)
+            except Exception:
+                pen_x += pos.x_advance
+                continue
+            bmp = face.glyph.bitmap
+            if bmp.rows == 0 or bmp.width == 0:
+                pen_x += pos.x_advance
+                continue
+            bx = (pen_x + pos.x_offset) // 64 + face.glyph.bitmap_left
+            by = baseline - face.glyph.bitmap_top + pos.y_offset // 64
+            bmp_arr = np.array(bmp.buffer, dtype=np.uint8).reshape(bmp.rows, bmp.pitch)[:, :bmp.width].astype(np.float32)
+            x0 = max(bx, 0); x1 = min(bx + bmp.width, img_w)
+            y0 = max(by, 0); y1 = min(by + bmp.rows,  img_h)
+            if x1 > x0 and y1 > y0:
+                canvas[y0:y1, x0:x1] = np.minimum(255.0, canvas[y0:y1, x0:x1] + bmp_arr[y0-by:y1-by, x0-bx:x1-bx])
+            pen_x += pos.x_advance
+
+        mask = canvas > 8
+        if not mask.any():
+            raise ValueError("empty")
+        ry = np.where(mask.any(axis=1))[0]; rx = np.where(mask.any(axis=0))[0]
+        canvas = canvas[max(ry[0]-2,0):min(ry[-1]+4,img_h), max(rx[0]-2,0):min(rx[-1]+4,img_w)]
+
+        cr, cg, cb = color
+        alpha = np.clip(canvas, 0, 255).astype(np.uint8)
+        rgba  = np.zeros((*alpha.shape, 4), dtype=np.uint8)
+        rgba[:,:,0]=cr; rgba[:,:,1]=cg; rgba[:,:,2]=cb; rgba[:,:,3]=alpha
+        hi = Image.fromarray(rgba, 'RGBA')
+        return hi.resize((max(1, hi.width//SS), max(1, hi.height//SS)), Image.LANCZOS)
+
+    except Exception as _e:
+        import logging; logging.getLogger(__name__).warning(f"uharfbuzz failed: {_e}")
+
+    # ── PIL fallback (last resort) ─────────────────────────────────
     ss = 8 if pt < 14 else 4
     px = int(pt * ss * 1.33)
     try:   pil_font = ImageFont.truetype(font_path, px)

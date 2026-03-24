@@ -38,6 +38,7 @@ pdfmetrics.registerFont(TTFont('PP-Med',   font('Poppins-Medium.ttf')))
 DEVA_BOLD = font('NotoSansDevanagari-Bold.ttf')
 DEVA_REG  = font('NotoSansDevanagari-Regular.ttf')
 SS = 4  # supersampling scale
+LOGO_PATH = os.path.join(SCRIPT_DIR, 'srjbtk_logo_official.png')
 
 # ── A6 landscape: 148 × 105 mm ────────────────────────────────────
 MM = 2.8346
@@ -181,6 +182,8 @@ def qr_image(text, px=9):
 _font_bytes_cache: dict = {}   # font_path -> bytes
 _ft_face_cache:    dict = {}   # font_path -> freetype.Face
 _hb_face_cache:    dict = {}   # font_path -> hb.Face
+_deva_cache:       dict = {}   # (text, pt, bold, color) -> PIL Image
+_logo_cache:       list = []   # [ImageReader, logo_w_pt, logo_h_pt] once loaded
 
 def _font_bytes(path):
     if path not in _font_bytes_cache:
@@ -202,7 +205,33 @@ def _hb_face(path):
     return _hb_face_cache[path]
 
 
+def _get_cached_logo():
+    """Load, resize, and PNG-encode the logo exactly once per process."""
+    if not _logo_cache:
+        if os.path.exists(LOGO_PATH):
+            HDR = 23 * MM
+            logo    = Image.open(LOGO_PATH).convert('RGBA')
+            logo_h  = HDR - 5 * MM
+            logo_w  = logo_h * logo.width / logo.height
+            resized = logo.resize((int(logo_w * 3), int(logo_h * 3)), Image.LANCZOS)
+            buf = io.BytesIO()
+            resized.save(buf, 'PNG')
+            buf.seek(0)
+            _logo_cache.extend([ImageReader(buf), logo_w, logo_h])
+        else:
+            _logo_cache.extend([None, 0, 0])
+    return _logo_cache  # [ir, logo_w, logo_h]
+
+
 def deva(text, pt=22, bold=False, color=(26,26,26)):
+    """Cached wrapper — renders each unique (text, pt, bold, color) only once."""
+    key = (text, pt, bold, color)
+    if key not in _deva_cache:
+        _deva_cache[key] = _deva_render(text, pt, bold, color)
+    return _deva_cache[key]
+
+
+def _deva_render(text, pt=22, bold=False, color=(26,26,26)):
     """
     Render Devanagari using Windows GDI (ctypes) — zero extra dependencies.
     Windows Uniscribe shapes Devanagari conjuncts perfectly.
@@ -476,16 +505,12 @@ def draw_pass(c, vol):
     c.setFillColor(T_ACCENT)
     c.rect(0, CH-HDR-1*MM, CW, 1*MM, fill=1, stroke=0)
 
-    # Logo — optional, fitted neatly inside header
-    LOGO_PATH = os.path.join(SCRIPT_DIR, 'srjbtk_logo_official.png')
+    # Logo — loaded and resized once per process, reused for every pass
     text_x = 4*MM
-    if os.path.exists(LOGO_PATH):
-        logo   = Image.open(LOGO_PATH).convert('RGBA')
-        logo_h = HDR - 5*MM
-        logo_w = logo_h * logo.width / logo.height
-        logo   = logo.resize((int(logo_w*3), int(logo_h*3)), Image.LANCZOS)
+    logo_ir, logo_w, logo_h = _get_cached_logo()
+    if logo_ir is not None:
         logo_y = CH - HDR + 2.5*MM
-        c.drawImage(irl(logo), 2*MM, logo_y, logo_w, logo_h, mask='auto')
+        c.drawImage(logo_ir, 2*MM, logo_y, logo_w, logo_h, mask='auto')
         text_x = 2*MM + logo_w + 3*MM
 
     # Org + event — render on maroon swatch so text is always visible

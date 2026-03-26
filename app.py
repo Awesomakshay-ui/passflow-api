@@ -33,6 +33,10 @@ def enrich(vol, event):
     if not v.get('event_label') and event.get('name'):        v['event_label'] = event['name']
     if not v.get('expiry')      and event.get('expiry_date'): v['expiry']      = event['expiry_date']
     if not v.get('org')         and event.get('org_name'):    v['org']         = event['org_name']
+    # Set the correct QR verification URL for this event
+    event_id = event.get('id', '')
+    if event_id:
+        v['verify_url'] = f"https://passflow-api.caakshayshukla.workers.dev/v/{event_id}"
     return v
 
 @app.route('/health', methods=['GET'])

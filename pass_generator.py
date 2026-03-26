@@ -499,7 +499,9 @@ def draw_pass(c, vol):
     QR_SIZE = RC_W
     QR_Y    = ID_Y - QR_SIZE - 3*MM       # 3mm gap below ID box
 
-    if VERIFY_BASE_URL:
+    if vol.get('verify_url'):
+        qr_data = f"{vol['verify_url']}/{vol_id}"
+    elif VERIFY_BASE_URL:
         qr_data = f"{VERIFY_BASE_URL}?id={vol_id}"
     else:
         qr_data = f"{vol_id}|{name_en}|{role}|ADH:{str(vol.get('aadhaar',''))[-4:]}"

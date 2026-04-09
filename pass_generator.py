@@ -811,24 +811,39 @@ def draw_backside(c, vol, cw=None, ch=None):
     c.setFillColor(T_ACCENT)
     c.rect(0, ch - HDR - 0.8 * MM, cw, 0.8 * MM, fill=1, stroke=0)
 
-    # Header text — use place_deva for proper Hindi rendering
+    # Header text — render Hindi org name as image, centre it in header
     org_label = str(vol.get('org', '') or vol.get('event_label', ''))[:60]
-    # Render org name with Hindi shaping (place_deva handles both scripts)
-    org_y = ch - HDR + HDR * 0.38
-    org_w, org_h = place_deva(c, org_label, 0, org_y, pt=11, bold=True,
-                               color=(255, 255, 255), max_w=cw)
-    # Centre it manually: place_deva draws from x=0, shift right by (cw - org_w)/2
-    if org_w > 0 and org_w < cw:
-        # Re-render centred
-        c.setFillColor(T_PRIMARY)
-        c.rect(0, ch - HDR, cw, HDR, fill=1, stroke=0)
-        c.setFillColor(T_ACCENT)
-        c.rect(0, ch - HDR - 0.8 * MM, cw, 0.8 * MM, fill=1, stroke=0)
-        place_deva(c, org_label, (cw - org_w) / 2, org_y, pt=11, bold=True,
-                   color=(255, 255, 255), max_w=cw)
+
+    # Generate the Hindi text image using deva()
+    org_img = deva(org_label, pt=13, bold=True, color=(255, 255, 255))
+    if org_img is not None:
+        # Convert PIL image to ReportLab ImageReader
+        img_buf = io.BytesIO()
+        org_img.save(img_buf, 'PNG')
+        img_buf.seek(0)
+        # Scale to fit header height (leave padding)
+        max_h_pt = HDR * 0.55
+        scale    = max_h_pt / (org_img.height * 0.75)  # 0.75 = 72/96 dpi
+        img_w_pt = org_img.width * 0.75 * scale
+        img_h_pt = org_img.height * 0.75 * scale
+        # Clamp width to page width
+        if img_w_pt > cw - 8 * MM:
+            scale    = (cw - 8 * MM) / (org_img.width * 0.75)
+            img_w_pt = cw - 8 * MM
+            img_h_pt = org_img.height * 0.75 * scale
+        # Draw centred in header
+        img_x = (cw - img_w_pt) / 2
+        img_y = ch - HDR + (HDR - img_h_pt) / 2 + 1 * MM
+        c.drawImage(ImageReader(img_buf), img_x, img_y, img_w_pt, img_h_pt, mask='auto')
+    else:
+        # Fallback: plain text (won't render Hindi but at least shows something)
+        c.setFillColor(colors.white)
+        c.setFont('PP-Bold', 9)
+        c.drawCentredString(cw / 2, ch - HDR + HDR * 0.5, org_label)
+
     c.setFillColor(colors.HexColor('#FFCC88'))
     c.setFont('PP-Light', 6)
-    c.drawCentredString(cw / 2, ch - HDR + HDR * 0.12, 'IMPORTANT INSTRUCTIONS')
+    c.drawCentredString(cw / 2, ch - HDR + HDR * 0.1, 'IMPORTANT INSTRUCTIONS')
 
     # Instructions text — get from vol or use defaults
     raw = str(vol.get('backside_text') or '').strip()

@@ -452,7 +452,17 @@ def draw_pass(c, vol):
     c.rect(0, CH-HDR-1*MM, CW, 1*MM, fill=1, stroke=0)
 
     # Logo — optional, fitted neatly inside header
+    # Use org logo_url if provided, else fall back to default logo
+    logo_url  = vol.get('logo_url', '')
     LOGO_PATH = os.path.join(SCRIPT_DIR, 'srjbtk_logo_official.png')
+    if logo_url:
+        try:
+            import urllib.request, tempfile
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+            urllib.request.urlretrieve(logo_url, tmp.name)
+            LOGO_PATH = tmp.name
+        except Exception:
+            pass  # Fall back to default logo
     text_x = 4*MM
     if os.path.exists(LOGO_PATH):
         logo   = Image.open(LOGO_PATH).convert('RGBA')
@@ -474,9 +484,33 @@ def draw_pass(c, vol):
     place_deva(c, event, text_x, CH-HDR+HDR*0.12, pt=11, bold=False,
                color=(255,224,144), max_w=avail_pt)
 
-    # ══ RIGHT COLUMN — ID box + QR ═══════════════════════════════
+    # ══ RIGHT COLUMN — Photo + ID box + QR ══════════════════════
     RC_W  = 32*MM                           # right column width
     RC_X  = CW - RC_W - 3*MM               # right column left edge
+
+    # Photo — displayed at top of right column if URL provided
+    photo_url = str(vol.get('photo_url') or vol.get('photo') or '').strip()
+    PHOTO_H   = 0
+    if photo_url:
+        try:
+            import urllib.request, tempfile as _tf
+            _ext = '.jpg' if 'jpg' in photo_url.lower() else '.png'
+            _tmp = _tf.NamedTemporaryFile(delete=False, suffix=_ext)
+            urllib.request.urlretrieve(photo_url, _tmp.name)
+            photo_img = Image.open(_tmp.name).convert('RGBA')
+            # Crop to square from centre
+            pw, ph = photo_img.size
+            side = min(pw, ph)
+            left = (pw - side)//2; top = (ph - side)//2
+            photo_img = photo_img.crop((left, top, left+side, top+side))
+            PHOTO_H = RC_W  # square photo = same width as column
+            PHOTO_Y = BODY_TOP - PHOTO_H - 2*MM
+            c.drawImage(irl(photo_img), RC_X, PHOTO_Y, RC_W, PHOTO_H, mask='auto')
+            # Thin border around photo
+            c.setStrokeColor(GOLD); c.setLineWidth(0.5)
+            c.rect(RC_X, PHOTO_Y, RC_W, PHOTO_H, fill=0, stroke=1)
+        except Exception:
+            PHOTO_H = 0
     PAD_V = 4*MM                            # vertical padding from header/bottom
 
     BODY_TOP = CH - HDR - 0.8*MM           # top of body area
@@ -484,7 +518,7 @@ def draw_pass(c, vol):
 
     # ── ID box — top of right column ─────────────────────────────
     ID_H  = 13*MM
-    ID_Y  = BODY_TOP - ID_H - 2*MM        # just below header gold line
+    ID_Y  = BODY_TOP - ID_H - 2*MM - PHOTO_H - (2*MM if PHOTO_H else 0)  # below photo if present
 
     c.setFillColor(LGREY)
     c.roundRect(RC_X, ID_Y, RC_W, ID_H, 1.5*MM, fill=1, stroke=0)
@@ -639,6 +673,112 @@ def draw_pass(c, vol):
     c.rect(0.6*MM, 0.6*MM, CW-1.2*MM, CH-1.2*MM, fill=0, stroke=1)
     c.setStrokeColor(GOLD); c.setLineWidth(0.35)
     c.rect(1.5*MM, 1.5*MM, CW-3*MM, CH-3*MM, fill=0, stroke=1)
+
+
+
+# ══════════════════════════════════════════════════════════════════
+# BACKSIDE — Instructions / custom text
+# ══════════════════════════════════════════════════════════════════
+def draw_backside(c, vol, cw=None, ch=None):
+    """Draw a backside page for the pass with custom instructions."""
+    if cw is None: cw = CW
+    if ch is None: ch = CH
+
+    pass_type = str(vol.get('pass_type', 'standard')).lower()
+    THEMES = {
+        'standard': {'primary': colors.HexColor('#7B1C1C'), 'accent': colors.HexColor('#B8922A')},
+        'vip':      {'primary': colors.HexColor('#1A1A2E'), 'accent': colors.HexColor('#FFD700')},
+        'media':    {'primary': colors.HexColor('#0D47A1'), 'accent': colors.HexColor('#90CAF9')},
+        'security': {'primary': colors.HexColor('#1B5E20'), 'accent': colors.HexColor('#A5D6A7')},
+        'medical':  {'primary': colors.HexColor('#880E4F'), 'accent': colors.HexColor('#F48FB1')},
+    }
+    theme     = THEMES.get(pass_type, THEMES['standard'])
+    T_PRIMARY = theme['primary']
+    T_ACCENT  = theme['accent']
+
+    # White background
+    c.setFillColor(colors.white)
+    c.rect(0, 0, cw, ch, fill=1, stroke=0)
+
+    # Top header strip
+    HDR = 14 * MM
+    c.setFillColor(T_PRIMARY)
+    c.rect(0, ch - HDR, cw, HDR, fill=1, stroke=0)
+    c.setFillColor(T_ACCENT)
+    c.rect(0, ch - HDR - 0.8 * MM, cw, 0.8 * MM, fill=1, stroke=0)
+
+    # Header text
+    org_label = str(vol.get('org', '') or vol.get('event_label', ''))[:60]
+    c.setFillColor(colors.white)
+    c.setFont('PP-Bold', 9)
+    c.drawCentredString(cw / 2, ch - HDR + HDR * 0.55, org_label)
+    c.setFont('PP-Light', 6.5)
+    c.drawCentredString(cw / 2, ch - HDR + HDR * 0.18, 'IMPORTANT INSTRUCTIONS')
+
+    # Instructions text — get from vol or use defaults
+    raw = str(vol.get('backside_text') or '').strip()
+    if raw:
+        paragraphs = raw.split('\n')
+    else:
+        paragraphs = [
+            'This pass is strictly non-transferable and must be worn visibly at all times.',
+            'Loss of this pass must be reported immediately to the pass control desk.',
+            'This pass does not grant access beyond designated areas.',
+            'The organiser reserves the right to cancel this pass without notice.',
+            'Please carry a valid government-issued photo ID at all times.',
+        ]
+
+    # Render paragraphs as word-wrapped bulleted lines
+    PAD    = 6 * MM
+    text_w = cw - PAD * 2
+    line_h = 5 * MM
+    cur_y  = ch - HDR - 8 * MM
+
+    c.setFillColor(colors.HexColor('#1A1A1A'))
+    c.setFont('PP', 7)
+
+    for para in paragraphs:
+        para = para.strip()
+        if not para:
+            cur_y -= line_h * 0.6
+            continue
+        words  = para.split()
+        line   = ''
+        first  = True
+        for word in words:
+            prefix  = '\u2022  ' if first else '    '
+            test    = prefix + (line + ' ' + word).strip()
+            if c.stringWidth(test, 'PP', 7) > text_w and line:
+                c.drawString(PAD, cur_y, ('\u2022  ' if first else '    ') + line)
+                cur_y -= line_h
+                first  = False
+                line   = word
+            else:
+                line = (line + ' ' + word).strip() if line else word
+        if line:
+            c.drawString(PAD, cur_y, ('\u2022  ' if first else '    ') + line)
+            cur_y -= line_h
+        cur_y -= line_h * 0.4
+
+    # Vol ID at bottom
+    vol_id = str(vol.get('id', ''))
+    c.setFillColor(colors.HexColor('#AAAAAA'))
+    c.setFont('PP-Light', 5)
+    c.drawCentredString(cw / 2, 8 * MM, 'Pass ID: ' + vol_id)
+
+    # Bottom strip
+    c.setFillColor(T_PRIMARY)
+    c.rect(0, 0, cw, 5.5 * MM, fill=1, stroke=0)
+    c.setFillColor(T_ACCENT)
+    c.rect(0, 5.5 * MM, cw, 0.5 * MM, fill=1, stroke=0)
+
+    # Outer border
+    c.setStrokeColor(colors.HexColor('#7B1C1C'))
+    c.setLineWidth(1.2)
+    c.rect(0.6 * MM, 0.6 * MM, cw - 1.2 * MM, ch - 1.2 * MM, fill=0, stroke=1)
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(0.35)
+    c.rect(1.5 * MM, 1.5 * MM, cw - 3 * MM, ch - 3 * MM, fill=0, stroke=1)
 
 
 def mask_aadhaar(v):

@@ -16,27 +16,86 @@ def get_generator():
         _generator = pg
     return _generator
 
-def build_pdf_bytes(vols):
-    pg = get_generator()
+# Page sizes in mm (width x height for landscape)
+PAGE_SIZES = {
+    'a6':  (148, 105),
+    'a5':  (210, 148),
+    'a7':  (105,  74),
+    'a4':  (297, 210),  # 2-up side by side
+}
+
+def build_pdf_bytes(vols, size='a6', backside=False):
+    pg  = get_generator()
+    MM  = pg.MM
+    w_mm, h_mm = PAGE_SIZES.get(size, PAGE_SIZES['a6'])
+    CW  = w_mm * MM
+    CH  = h_mm * MM
+
+    # For A4 2-up: two passes side by side on one page
+    two_up = (size == 'a4')
+    # Single pass dimensions for 2-up
+    if two_up:
+        pass_w = CW / 2
+        pass_h = CH
+    else:
+        pass_w = CW
+        pass_h = CH
+
+    # Monkeypatch dimensions if different from default A6
+    orig_CW, orig_CH = pg.CW, pg.CH
+    pg.CW = pass_w
+    pg.CH = pass_h
+
     buf = io.BytesIO()
     from reportlab.pdfgen import canvas as rl_canvas
-    c = rl_canvas.Canvas(buf, pagesize=(pg.CW, pg.CH))
-    for vol in vols:
-        pg.draw_pass(c, vol)
-        c.showPage()
+    c = rl_canvas.Canvas(buf, pagesize=(CW, CH))
+
+    if two_up:
+        # Pair up volunteers, 2 per page
+        for i in range(0, len(vols), 2):
+            # Left pass
+            c.saveState()
+            c.translate(0, 0)
+            pg.draw_pass(c, vols[i])
+            c.restoreState()
+            # Right pass (if exists)
+            if i + 1 < len(vols):
+                c.saveState()
+                c.translate(pass_w, 0)
+                pg.draw_pass(c, vols[i+1])
+                c.restoreState()
+            c.showPage()
+            if backside:
+                c.saveState(); c.translate(0, 0)
+                pg.draw_backside(c, vols[i], pass_w, pass_h)
+                c.restoreState()
+                if i + 1 < len(vols):
+                    c.saveState(); c.translate(pass_w, 0)
+                    pg.draw_backside(c, vols[i+1], pass_w, pass_h)
+                    c.restoreState()
+                c.showPage()
+    else:
+        for vol in vols:
+            pg.draw_pass(c, vol)
+            c.showPage()
+            if backside:
+                pg.draw_backside(c, vol, pass_w, pass_h)
+                c.showPage()
+
     c.save()
+    # Restore original dimensions
+    pg.CW = orig_CW
+    pg.CH = orig_CH
     buf.seek(0)
     return buf
 
 def enrich(vol, event):
     v = dict(vol)
-    if not v.get('event_label') and event.get('name'):        v['event_label'] = event['name']
-    if not v.get('expiry')      and event.get('expiry_date'): v['expiry']      = event['expiry_date']
-    if not v.get('org')         and event.get('org_name'):    v['org']         = event['org_name']
-    # Set the correct QR verification URL for this event
-    event_id = event.get('id', '')
-    if event_id:
-        v['verify_url'] = f"https://passflow-api.caakshayshukla.workers.dev/v/{event_id}"
+    if not v.get('event_label')   and event.get('name'):          v['event_label']   = event['name']
+    if not v.get('expiry')        and event.get('expiry_date'):   v['expiry']        = event['expiry_date']
+    if not v.get('org')           and event.get('org_name'):      v['org']           = event['org_name']
+    if not v.get('logo_url')      and event.get('logo_url'):      v['logo_url']      = event['logo_url']
+    if not v.get('backside_text') and event.get('backside_text'): v['backside_text'] = event['backside_text']
     return v
 
 @app.route('/health', methods=['GET'])
@@ -82,8 +141,10 @@ def generate_pdf():
         if not vols: return jsonify({"error": "No volunteers"}), 400
         if len(vols) > 3000: return jsonify({"error": "Max 3000"}), 400
         enriched = [enrich(v, event) for v in vols]
-        log.info(f"Generating PDF for {len(enriched)} volunteers")
-        buf = build_pdf_bytes(enriched)
+        size     = data.get('size', 'a6').lower()
+        backside = bool(data.get('backside', False))
+        log.info(f"Generating PDF for {len(enriched)} volunteers size={size} backside={backside}")
+        buf = build_pdf_bytes(enriched, size=size, backside=backside)
         fn  = f"passes_{(event.get('name') or 'event').replace(' ','_')[:40]}_{len(enriched)}.pdf"
         return send_file(buf, mimetype='application/pdf', as_attachment=True, download_name=fn)
     except Exception as e:
@@ -99,8 +160,10 @@ def generate_single():
         event = data.get('event', {})
         if not vol: return jsonify({"error": "No volunteer"}), 400
         vol = enrich(vol, event)
-        log.info(f"Generating single pass for {vol.get('id','unknown')}")
-        buf = build_pdf_bytes([vol])
+        size     = data.get('size', 'a6').lower()
+        backside = bool(data.get('backside', False))
+        log.info(f"Generating single pass for {vol.get('id','unknown')} size={size} backside={backside}")
+        buf = build_pdf_bytes([vol], size=size, backside=backside)
         fn  = f"pass_{str(vol.get('id') or vol.get('name') or 'pass').replace(' ','_')[:30]}.pdf"
         return send_file(buf, mimetype='application/pdf', as_attachment=True, download_name=fn)
     except Exception as e:

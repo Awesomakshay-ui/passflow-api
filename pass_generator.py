@@ -811,35 +811,31 @@ def draw_backside(c, vol, cw=None, ch=None):
     c.setFillColor(T_ACCENT)
     c.rect(0, ch - HDR - 0.8 * MM, cw, 0.8 * MM, fill=1, stroke=0)
 
-    # Header text — render Hindi org name as image, centre it in header
-    org_label = str(vol.get('org', '') or vol.get('event_label', ''))[:60]
+    # Header org name — measure image then draw once centred
+    org_label = (str(vol.get('org') or '').strip() or
+                 str(vol.get('event_label') or '').strip() or
+                 'Event Pass')[:60]
 
-    # Generate the Hindi text image using deva()
-    org_img = deva(org_label, pt=13, bold=True, color=(255, 255, 255))
-    if org_img is not None:
-        # Convert PIL image to ReportLab ImageReader
-        img_buf = io.BytesIO()
-        org_img.save(img_buf, 'PNG')
-        img_buf.seek(0)
-        # Scale to fit header height (leave padding)
-        max_h_pt = HDR * 0.55
-        scale    = max_h_pt / (org_img.height * 0.75)  # 0.75 = 72/96 dpi
-        img_w_pt = org_img.width * 0.75 * scale
-        img_h_pt = org_img.height * 0.75 * scale
-        # Clamp width to page width
-        if img_w_pt > cw - 8 * MM:
-            scale    = (cw - 8 * MM) / (org_img.width * 0.75)
-            img_w_pt = cw - 8 * MM
-            img_h_pt = org_img.height * 0.75 * scale
-        # Draw centred in header
-        img_x = (cw - img_w_pt) / 2
-        img_y = ch - HDR + (HDR - img_h_pt) / 2 + 1 * MM
-        c.drawImage(ImageReader(img_buf), img_x, img_y, img_w_pt, img_h_pt, mask='auto')
+    # Get image dimensions without drawing (just call deva directly)
+    _org_img = deva(org_label, pt=13, bold=True, color=(255, 255, 255))
+    if _org_img is not None:
+        # Convert pixel dimensions to points (72dpi, image is screen res ~96dpi so factor 0.75)
+        _w_pt = _org_img.width * 0.75
+        _h_pt = _org_img.height * 0.75
+        # Clamp to page width
+        if _w_pt > cw - 4*MM:
+            _scale = (cw - 4*MM) / _w_pt
+            _w_pt *= _scale; _h_pt *= _scale
+        # Draw centred — place_deva will re-render and draw at this position
+        _cx = (cw - _w_pt) / 2
+        _cy = ch - HDR + (HDR - _h_pt) / 2
+        # Write image directly using ImageReader (avoids double render)
+        _buf = io.BytesIO(); _org_img.save(_buf, 'PNG'); _buf.seek(0)
+        c.drawImage(ImageReader(_buf), _cx, _cy, _w_pt, _h_pt, mask='auto')
     else:
-        # Fallback: plain text (won't render Hindi but at least shows something)
-        c.setFillColor(colors.white)
-        c.setFont('PP-Bold', 9)
-        c.drawCentredString(cw / 2, ch - HDR + HDR * 0.5, org_label)
+        # Fallback to place_deva left-aligned (at least renders correctly)
+        place_deva(c, org_label, 4*MM, ch - HDR + HDR*0.4, pt=12, bold=True,
+                   color=(255, 255, 255), max_w=cw - 8*MM)
 
     c.setFillColor(colors.HexColor('#FFCC88'))
     c.setFont('PP-Light', 6)

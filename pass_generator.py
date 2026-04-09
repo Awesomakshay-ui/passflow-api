@@ -412,7 +412,7 @@ def irl(img):
 # ══════════════════════════════════════════════════════════════════
 # PASS DRAWING — v7 clean design
 # ══════════════════════════════════════════════════════════════════
-def draw_pass(c, vol):
+def draw_pass_t1(c, vol):
     vol_id  = str(vol.get('id',  'VOL00001'))
     name_en = str(vol.get('name','Volunteer Name'))
     name_hi = str(vol.get('name_hi',''))
@@ -488,29 +488,8 @@ def draw_pass(c, vol):
     RC_W  = 32*MM                           # right column width
     RC_X  = CW - RC_W - 3*MM               # right column left edge
 
-    # Photo — displayed at top of right column if URL provided
-    photo_url = str(vol.get('photo_url') or vol.get('photo') or '').strip()
-    PHOTO_H   = 0
-    if photo_url:
-        try:
-            import urllib.request, tempfile as _tf
-            _ext = '.jpg' if 'jpg' in photo_url.lower() else '.png'
-            _tmp = _tf.NamedTemporaryFile(delete=False, suffix=_ext)
-            urllib.request.urlretrieve(photo_url, _tmp.name)
-            photo_img = Image.open(_tmp.name).convert('RGBA')
-            # Crop to square from centre
-            pw, ph = photo_img.size
-            side = min(pw, ph)
-            left = (pw - side)//2; top = (ph - side)//2
-            photo_img = photo_img.crop((left, top, left+side, top+side))
-            PHOTO_H = RC_W  # square photo = same width as column
-            PHOTO_Y = BODY_TOP - PHOTO_H - 2*MM
-            c.drawImage(irl(photo_img), RC_X, PHOTO_Y, RC_W, PHOTO_H, mask='auto')
-            # Thin border around photo
-            c.setStrokeColor(GOLD); c.setLineWidth(0.5)
-            c.rect(RC_X, PHOTO_Y, RC_W, PHOTO_H, fill=0, stroke=1)
-        except Exception:
-            PHOTO_H = 0
+    # T1: no photo
+    PHOTO_H = 0
     PAD_V = 4*MM                            # vertical padding from header/bottom
 
     BODY_TOP = CH - HDR - 0.8*MM           # top of body area
@@ -518,7 +497,7 @@ def draw_pass(c, vol):
 
     # ── ID box — top of right column ─────────────────────────────
     ID_H  = 13*MM
-    ID_Y  = BODY_TOP - ID_H - 2*MM - PHOTO_H - (2*MM if PHOTO_H else 0)  # below photo if present
+    ID_Y  = BODY_TOP - ID_H - 2*MM
 
     c.setFillColor(LGREY)
     c.roundRect(RC_X, ID_Y, RC_W, ID_H, 1.5*MM, fill=1, stroke=0)
@@ -674,6 +653,131 @@ def draw_pass(c, vol):
     c.setStrokeColor(GOLD); c.setLineWidth(0.35)
     c.rect(1.5*MM, 1.5*MM, CW-3*MM, CH-3*MM, fill=0, stroke=1)
 
+
+
+
+# ══════════════════════════════════════════════════════════════════
+# TEMPLATE 2 — With Photo (right column)
+# ══════════════════════════════════════════════════════════════════
+def draw_pass_t2(c, vol):
+    """Template 2: Same as T1 but with volunteer photo in right column above ID box."""
+    import urllib.request
+    import tempfile as _tf
+
+    # Draw base pass first
+    draw_pass_t1(c, vol)
+
+    # Now overlay photo in right column
+    RC_W = 32 * MM
+    RC_X = CW - RC_W - 3 * MM
+    HDR  = 23 * MM
+    BODY_TOP = CH - HDR - 1 * MM
+
+    photo_url = str(vol.get('photo_url') or vol.get('photo') or '').strip()
+    if not photo_url:
+        return  # No photo — looks same as T1
+
+    try:
+        _ext = '.png' if photo_url.lower().endswith('.png') else '.jpg'
+        _tmp = _tf.NamedTemporaryFile(delete=False, suffix=_ext)
+        urllib.request.urlretrieve(photo_url, _tmp.name)
+        photo_img = Image.open(_tmp.name).convert('RGBA')
+
+        # Centre-crop to square
+        pw, ph = photo_img.size
+        side   = min(pw, ph)
+        left   = (pw - side) // 2
+        top    = (ph - side) // 2
+        photo_img = photo_img.crop((left, top, left + side, top + side))
+
+        # Draw photo in right column — take up ~40% of column height
+        PHOTO_SIZE = RC_W * 0.95
+        PHOTO_Y    = BODY_TOP - PHOTO_SIZE - 1 * MM
+
+        # White background behind photo
+        c.setFillColor(colors.white)
+        c.rect(RC_X, PHOTO_Y, RC_W, PHOTO_SIZE + 1 * MM, fill=1, stroke=0)
+
+        # Draw photo
+        c.drawImage(irl(photo_img), RC_X + (RC_W - PHOTO_SIZE) / 2, PHOTO_Y,
+                    PHOTO_SIZE, PHOTO_SIZE, mask='auto')
+
+        # Gold border around photo
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(0.6)
+        c.rect(RC_X + (RC_W - PHOTO_SIZE) / 2, PHOTO_Y,
+               PHOTO_SIZE, PHOTO_SIZE, fill=0, stroke=1)
+
+        # Shift the ID box and QR down to make room
+        # (redraw them in correct position - white out old ones first)
+        ID_H = 13 * MM
+        OLD_ID_Y = BODY_TOP - ID_H - 2 * MM
+        NEW_ID_Y = PHOTO_Y - ID_H - 2 * MM
+        QR_SIZE  = RC_W
+        OLD_QR_Y = OLD_ID_Y - QR_SIZE - 3 * MM
+
+        # White out old ID box and QR
+        c.setFillColor(colors.white)
+        c.rect(RC_X - 1, OLD_QR_Y - 5 * MM, RC_W + 2, BODY_TOP - OLD_QR_Y + 5 * MM, fill=1, stroke=0)
+
+        # Redraw ID box at new position
+        INK2   = colors.HexColor('#1A1A1A')
+        pass_type = str(vol.get('pass_type', 'standard')).lower()
+        THEMES = {
+            'standard': {'primary': colors.HexColor('#7B1C1C'), 'accent': colors.HexColor('#B8922A')},
+            'vip':      {'primary': colors.HexColor('#1A1A2E'), 'accent': colors.HexColor('#FFD700')},
+            'media':    {'primary': colors.HexColor('#0D47A1'), 'accent': colors.HexColor('#90CAF9')},
+            'security': {'primary': colors.HexColor('#1B5E20'), 'accent': colors.HexColor('#A5D6A7')},
+            'medical':  {'primary': colors.HexColor('#880E4F'), 'accent': colors.HexColor('#F48FB1')},
+        }
+        theme    = THEMES.get(pass_type, THEMES['standard'])
+        T_PRIMARY = theme['primary']
+        MAROON2  = colors.HexColor('#7B1C1C')
+
+        c.setFillColor(T_PRIMARY)
+        c.roundRect(RC_X, NEW_ID_Y, RC_W, ID_H, 1.5 * MM, fill=1, stroke=0)
+        c.setFillColor(colors.HexColor('#FFCC66'))
+        c.setFont('PP-Bold', 5)
+        c.drawCentredString(RC_X + RC_W / 2, NEW_ID_Y + ID_H - 4.5 * MM, 'VOLUNTEER ID')
+        c.setFillColor(colors.white)
+        c.setFont('PP-Bold', 10)
+        vol_id = str(vol.get('id', ''))
+        c.drawCentredString(RC_X + RC_W / 2, NEW_ID_Y + 2.5 * MM, vol_id)
+
+        # Redraw QR at new position
+        NEW_QR_Y = NEW_ID_Y - QR_SIZE - 3 * MM
+        if NEW_QR_Y > 6 * MM:  # Only if there's space
+            verify_url = vol.get('verify_url', '')
+            if verify_url:
+                qr_data = f"{verify_url}/{vol_id}"
+            else:
+                qr_data = vol_id
+            qr = qr_image(qr_data, px=9)
+            qr = qr.resize((int(QR_SIZE * 3), int(QR_SIZE * 3)), Image.NEAREST)
+            c.drawImage(irl(qr), RC_X, NEW_QR_Y, QR_SIZE, QR_SIZE)
+            c.setFillColor(colors.HexColor('#999999'))
+            c.setFont('PP-Light', 5)
+            c.drawCentredString(RC_X + RC_W / 2, NEW_QR_Y - 2.5 * MM, 'SCAN TO VERIFY')
+
+    except Exception as e:
+        pass  # If photo fails, T1 base is still intact
+
+
+
+# ══════════════════════════════════════════════════════════════════
+# TEMPLATE DISPATCHER
+# ══════════════════════════════════════════════════════════════════
+TEMPLATES = {
+    't1': {'fn': 'draw_pass_t1', 'name': 'Standard'},
+    't2': {'fn': 'draw_pass_t2', 'name': 'With Photo'},
+}
+
+def draw_pass(c, vol, template='t1'):
+    """Dispatch to the correct template function."""
+    if template == 't2':
+        draw_pass_t2(c, vol)
+    else:
+        draw_pass_t1(c, vol)
 
 
 # ══════════════════════════════════════════════════════════════════

@@ -24,7 +24,7 @@ PAGE_SIZES = {
     'a4':  (297, 210),  # 2-up side by side
 }
 
-def build_pdf_bytes(vols, size='a6', backside=False):
+def build_pdf_bytes(vols, size='a6', backside=False, template='t1'):
     pg  = get_generator()
     MM  = pg.MM
     w_mm, h_mm = PAGE_SIZES.get(size, PAGE_SIZES['a6'])
@@ -56,13 +56,13 @@ def build_pdf_bytes(vols, size='a6', backside=False):
             # Left pass
             c.saveState()
             c.translate(0, 0)
-            pg.draw_pass(c, vols[i])
+            pg.draw_pass(c, vols[i], template)
             c.restoreState()
             # Right pass (if exists)
             if i + 1 < len(vols):
                 c.saveState()
                 c.translate(pass_w, 0)
-                pg.draw_pass(c, vols[i+1])
+                pg.draw_pass(c, vols[i+1], template)
                 c.restoreState()
             c.showPage()
             if backside:
@@ -76,7 +76,7 @@ def build_pdf_bytes(vols, size='a6', backside=False):
                 c.showPage()
     else:
         for vol in vols:
-            pg.draw_pass(c, vol)
+            pg.draw_pass(c, vol, template)
             c.showPage()
             if backside:
                 pg.draw_backside(c, vol, pass_w, pass_h)
@@ -143,8 +143,9 @@ def generate_pdf():
         enriched = [enrich(v, event) for v in vols]
         size     = data.get('size', 'a6').lower()
         backside = bool(data.get('backside', False))
-        log.info(f"Generating PDF for {len(enriched)} volunteers size={size} backside={backside}")
-        buf = build_pdf_bytes(enriched, size=size, backside=backside)
+        template = data.get('template', 't1').lower()
+        log.info(f"Generating PDF for {len(enriched)} volunteers size={size} backside={backside} template={template}")
+        buf = build_pdf_bytes(enriched, size=size, backside=backside, template=template)
         fn  = f"passes_{(event.get('name') or 'event').replace(' ','_')[:40]}_{len(enriched)}.pdf"
         return send_file(buf, mimetype='application/pdf', as_attachment=True, download_name=fn)
     except Exception as e:
@@ -162,8 +163,9 @@ def generate_single():
         vol = enrich(vol, event)
         size     = data.get('size', 'a6').lower()
         backside = bool(data.get('backside', False))
-        log.info(f"Generating single pass for {vol.get('id','unknown')} size={size} backside={backside}")
-        buf = build_pdf_bytes([vol], size=size, backside=backside)
+        template = data.get('template', 't1').lower()
+        log.info(f"Generating single pass for {vol.get('id','unknown')} size={size} backside={backside} template={template}")
+        buf = build_pdf_bytes([vol], size=size, backside=backside, template=template)
         fn  = f"pass_{str(vol.get('id') or vol.get('name') or 'pass').replace(' ','_')[:30]}.pdf"
         return send_file(buf, mimetype='application/pdf', as_attachment=True, download_name=fn)
     except Exception as e:

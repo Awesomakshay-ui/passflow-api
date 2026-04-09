@@ -811,13 +811,24 @@ def draw_backside(c, vol, cw=None, ch=None):
     c.setFillColor(T_ACCENT)
     c.rect(0, ch - HDR - 0.8 * MM, cw, 0.8 * MM, fill=1, stroke=0)
 
-    # Header text
+    # Header text — use place_deva for proper Hindi rendering
     org_label = str(vol.get('org', '') or vol.get('event_label', ''))[:60]
-    c.setFillColor(colors.white)
-    c.setFont('PP-Bold', 9)
-    c.drawCentredString(cw / 2, ch - HDR + HDR * 0.55, org_label)
-    c.setFont('PP-Light', 6.5)
-    c.drawCentredString(cw / 2, ch - HDR + HDR * 0.18, 'IMPORTANT INSTRUCTIONS')
+    # Render org name with Hindi shaping (place_deva handles both scripts)
+    org_y = ch - HDR + HDR * 0.38
+    org_w, org_h = place_deva(c, org_label, 0, org_y, pt=11, bold=True,
+                               color=(255, 255, 255), max_w=cw)
+    # Centre it manually: place_deva draws from x=0, shift right by (cw - org_w)/2
+    if org_w > 0 and org_w < cw:
+        # Re-render centred
+        c.setFillColor(T_PRIMARY)
+        c.rect(0, ch - HDR, cw, HDR, fill=1, stroke=0)
+        c.setFillColor(T_ACCENT)
+        c.rect(0, ch - HDR - 0.8 * MM, cw, 0.8 * MM, fill=1, stroke=0)
+        place_deva(c, org_label, (cw - org_w) / 2, org_y, pt=11, bold=True,
+                   color=(255, 255, 255), max_w=cw)
+    c.setFillColor(colors.HexColor('#FFCC88'))
+    c.setFont('PP-Light', 6)
+    c.drawCentredString(cw / 2, ch - HDR + HDR * 0.12, 'IMPORTANT INSTRUCTIONS')
 
     # Instructions text — get from vol or use defaults
     raw = str(vol.get('backside_text') or '').strip()

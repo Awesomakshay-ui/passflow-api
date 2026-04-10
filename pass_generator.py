@@ -811,48 +811,54 @@ def draw_backside(c, vol, cw=None, ch=None):
     c.setFillColor(T_ACCENT)
     c.rect(0, ch - HDR - 0.8 * MM, cw, 0.8 * MM, fill=1, stroke=0)
 
-    # Header org name — measure image then draw once centred
-    org_label = (str(vol.get('org') or '').strip() or
-                 str(vol.get('event_label') or '').strip() or
-                 'Event Pass')[:60]
-
-    # Get image dimensions without drawing (just call deva directly)
-    _org_img = deva(org_label, pt=13, bold=True, color=(255, 255, 255))
-    if _org_img is not None:
-        # Convert pixel dimensions to points (72dpi, image is screen res ~96dpi so factor 0.75)
-        _w_pt = _org_img.width * 0.75
-        _h_pt = _org_img.height * 0.75
-        # Clamp to page width
-        if _w_pt > cw - 4*MM:
-            _scale = (cw - 4*MM) / _w_pt
-            _w_pt *= _scale; _h_pt *= _scale
-        # Draw centred — place_deva will re-render and draw at this position
-        _cx = (cw - _w_pt) / 2
-        _cy = ch - HDR + (HDR - _h_pt) / 2
-        # Write image directly using ImageReader (avoids double render)
-        _buf = io.BytesIO(); _org_img.save(_buf, 'PNG'); _buf.seek(0)
-        c.drawImage(ImageReader(_buf), _cx, _cy, _w_pt, _h_pt, mask='auto')
+    # Header — just सूचनाएँ centred, no org name
+    _sub_img = deva('सूचनाएँ', pt=10, bold=True, color=(255, 220, 150))
+    if _sub_img is not None:
+        _sw = _sub_img.width * 0.75
+        _sh = _sub_img.height * 0.75
+        _sx = (cw - _sw) / 2
+        _sy = ch - HDR + (HDR - _sh) / 2
+        _sbg = Image.new('RGB', _sub_img.size, (123, 28, 28))
+        _sbg.paste(_sub_img, mask=_sub_img.split()[3])
+        _sbuf = io.BytesIO(); _sbg.save(_sbuf, 'JPEG', quality=95); _sbuf.seek(0)
+        c.drawImage(ImageReader(_sbuf), _sx, _sy, _sw, _sh)
     else:
-        # Fallback to place_deva left-aligned (at least renders correctly)
-        place_deva(c, org_label, 4*MM, ch - HDR + HDR*0.4, pt=12, bold=True,
-                   color=(255, 255, 255), max_w=cw - 8*MM)
+        c.setFillColor(colors.HexColor('#FFCC88'))
+        c.setFont('PP-Bold', 9)
+        c.drawCentredString(cw / 2, ch - HDR + HDR * 0.4, 'सूचनाएँ')
 
-    c.setFillColor(colors.HexColor('#FFCC88'))
-    c.setFont('PP-Light', 6)
-    c.drawCentredString(cw / 2, ch - HDR + HDR * 0.1, 'IMPORTANT INSTRUCTIONS')
+    # Instructions text — get from vol or use language-appropriate defaults
+    raw  = str(vol.get('backside_text') or '').strip()
+    lang = str(vol.get('backside_lang') or 'english').strip().lower()
 
-    # Instructions text — get from vol or use defaults
-    raw = str(vol.get('backside_text') or '').strip()
+    EN_LINES = [
+        'This pass is strictly non-transferable and must be worn visibly at all times.',
+        'Loss of this pass must be reported immediately to the pass control desk.',
+        'This pass does not grant access beyond designated areas.',
+        'The organiser reserves the right to cancel this pass without notice.',
+        'Please carry a valid government-issued photo ID at all times.',
+    ]
+    HI_LINES = [
+        'यह पास पूर्णतः अहस्तांतरणीय है और इसे हर समय स्पष्ट रूप से पहना जाना चाहिए।',
+        'पास खो जाने की स्थिति में तुरंत पास नियंत्रण केंद्र को सूचित करें।',
+        'यह पास केवल निर्धारित क्षेत्रों तक ही प्रवेश प्रदान करता है।',
+        'आयोजक बिना किसी सूचना के इस पास को रद्द करने का अधिकार रखते हैं।',
+        'हर समय एक वैध सरकारी फोटो पहचान पत्र अपने साथ रखें।',
+    ]
+
     if raw:
         paragraphs = raw.split('\n')
+    elif lang == 'hindi':
+        paragraphs = HI_LINES
+    elif lang == 'both':
+        # Interleave Hindi and English
+        paragraphs = []
+        for hi, en in zip(HI_LINES, EN_LINES):
+            paragraphs.append(hi)
+            paragraphs.append(en)
+            paragraphs.append('')  # spacing between pairs
     else:
-        paragraphs = [
-            'This pass is strictly non-transferable and must be worn visibly at all times.',
-            'Loss of this pass must be reported immediately to the pass control desk.',
-            'This pass does not grant access beyond designated areas.',
-            'The organiser reserves the right to cancel this pass without notice.',
-            'Please carry a valid government-issued photo ID at all times.',
-        ]
+        paragraphs = EN_LINES
 
     # Render paragraphs as word-wrapped bulleted lines
     PAD    = 6 * MM

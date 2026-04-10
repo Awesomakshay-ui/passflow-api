@@ -95,12 +95,33 @@ def enrich(vol, event):
     if not v.get('expiry')        and event.get('expiry_date'):   v['expiry']        = event['expiry_date']
     if not v.get('org')           and event.get('org_name'):      v['org']           = event['org_name']
     if not v.get('logo_url')      and event.get('logo_url'):      v['logo_url']      = event['logo_url']
+    if not v.get('backside_lang')  and event.get('backside_lang'):  v['backside_lang']  = event['backside_lang']
     if not v.get('backside_text') and event.get('backside_text'): v['backside_text'] = event['backside_text']
     return v
 
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok", "service": "passflow-pass-generator"})
+
+@app.route('/test-deva', methods=['GET'])
+def test_deva():
+    import base64, io as _io
+    pg = get_generator()
+    results = {}
+    text = 'श्री राम जन्मभूमि'
+    for color, name in [((255,255,255), 'white'), ((26,26,26), 'dark')]:
+        try:
+            img = pg.deva(text, pt=13, bold=True, color=color)
+            if img is None:
+                results[name] = 'deva() returned None'
+            else:
+                buf = _io.BytesIO()
+                img.save(buf, 'PNG')
+                results[name] = f'OK: {img.width}x{img.height}px, {buf.tell()} bytes'
+        except Exception as e:
+            results[name] = f'ERROR: {e}'
+    return jsonify(results)
+
 
 @app.route('/debug-hb', methods=['GET'])
 def debug_hb():

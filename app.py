@@ -97,6 +97,10 @@ def enrich(vol, event):
     if not v.get('logo_url')      and event.get('logo_url'):      v['logo_url']      = event['logo_url']
     if not v.get('backside_lang')  and event.get('backside_lang'):  v['backside_lang']  = event['backside_lang']
     if not v.get('backside_text') and event.get('backside_text'): v['backside_text'] = event['backside_text']
+    # Always set verify_url from event id so QR points to correct endpoint
+    event_id = event.get('id', '')
+    if event_id:
+        v['verify_url'] = f'https://passflow-api.caakshayshukla.workers.dev/v/{event_id}'
     return v
 
 @app.route('/health', methods=['GET'])

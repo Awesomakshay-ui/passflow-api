@@ -57,7 +57,7 @@ LGREY   = colors.HexColor('#F0F0F0')
 DIVIDER = colors.HexColor('#E2E2E2')
 CREAM   = colors.HexColor('#FDF8F0')
 
-VERIFY_BASE_URL = "https://srjbtk-verify.caakshayshukla.workers.dev"
+VERIFY_BASE_URL = ""  # Disabled — verify_url is now set per-volunteer via app.py
 
 # ══════════════════════════════════════════════════════════════════
 # QR ENCODER

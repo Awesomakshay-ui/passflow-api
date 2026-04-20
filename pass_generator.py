@@ -770,12 +770,15 @@ def draw_pass_t2(c, vol):
 TEMPLATES = {
     't1': {'fn': 'draw_pass_t1', 'name': 'Standard'},
     't2': {'fn': 'draw_pass_t2', 'name': 'With Photo'},
+    't3': {'fn': 'draw_pass_t3', 'name': 'SRJBTK Style'},
 }
 
 def draw_pass(c, vol, template='t1'):
     """Dispatch to the correct template function."""
     if template == 't2':
         draw_pass_t2(c, vol)
+    elif template == 't3':
+        draw_pass_t3(c, vol)
     else:
         draw_pass_t1(c, vol)
 
@@ -1100,3 +1103,289 @@ def main():
 
 if __name__=='__main__':
     main()
+
+
+# ══════════════════════════════════════════════════════════════════
+# TEMPLATE 3 — SRJBTK Style (Teal header, circle logo, Hindi fields)
+# ══════════════════════════════════════════════════════════════════
+def draw_pass_t3(c, vol):
+    """
+    Template 3: SRJBTK-style pass
+    - Teal gradient header: org name / event name / date
+    - Left: circular logo
+    - Centre: ID, Name, Role fields in Hindi labels
+    - Bottom: notes left, signing authority right
+    Uses A5 landscape dimensions (210x148mm) by default
+    """
+    import math
+
+    # Use A5 landscape dimensions
+    W = 210 * MM
+    H = 148 * MM
+
+    # ── Palette ──────────────────────────────────────────────────
+    TEAL1   = colors.HexColor('#006D6D')
+    TEAL2   = colors.HexColor('#008080')
+    TEAL3   = colors.HexColor('#00A0A0')
+    GOLD_T  = colors.HexColor('#C8A04A')
+    INK2    = colors.HexColor('#1A1A1A')
+    WHITE2  = colors.white
+
+    # ── Data ─────────────────────────────────────────────────────
+    org      = str(vol.get('org', '') or 'संस्था का नाम').strip()
+    event    = str(vol.get('event_label', '') or vol.get('org', '')).strip()
+    vol_id   = str(vol.get('id', '')).strip()
+    name_hi  = str(vol.get('name_hi', '') or vol.get('name', '')).strip()
+    name_en  = str(vol.get('name', '')).strip()
+    role_hi  = str(vol.get('role', '')).strip()
+    expiry   = str(vol.get('expiry', '')).strip()
+    notes    = str(vol.get('backside_text', '')).strip()
+    logo_url = str(vol.get('logo_url', '')).strip()
+
+    # Default notes if none provided
+    if not notes:
+        note1 = 'यह प्रवेश-पत्र आधार कार्ड के साथ ही मान्य है।'
+        note2 = 'मंदिर परिसर में मोबाइल/कैमरा इत्यादि पूर्णतः प्रतिबंधित है।'
+    else:
+        lines = notes.split('\n')
+        note1 = lines[0].strip() if len(lines) > 0 else ''
+        note2 = lines[1].strip() if len(lines) > 1 else ''
+
+    # ── Background ───────────────────────────────────────────────
+    c.setFillColor(colors.HexColor('#F5F5F0'))
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+
+    # ── Header band (teal gradient simulation with 3 rects) ──────
+    HDR = 52 * MM
+    # Dark base
+    c.setFillColor(TEAL1)
+    c.rect(0, H - HDR, W, HDR, fill=1, stroke=0)
+    # Lighter overlay strip for depth
+    c.setFillColor(TEAL2)
+    c.rect(0, H - HDR * 0.6, W, HDR * 0.6, fill=1, stroke=0)
+    # Gold bottom line
+    c.setFillColor(GOLD_T)
+    c.rect(0, H - HDR - 0.8 * MM, W, 1.2 * MM, fill=1, stroke=0)
+
+    # Subtle diagonal overlay for texture
+    c.saveState()
+    c.setFillColor(colors.HexColor('#FFFFFF'))
+    c.setFillAlpha(0.04)
+    for i in range(0, int(W) + 60, 20):
+        c.rect(i, H - HDR, 10, HDR, fill=1, stroke=0)
+    c.restoreState()
+
+    # ── Header text ───────────────────────────────────────────────
+    # Line 1: Org name (large, bold Hindi)
+    org_img = deva(org, pt=20, bold=True, color=(255, 255, 255))
+    if org_img:
+        _w = min(org_img.width * 0.75, W - 20 * MM)
+        _h = org_img.height * 0.75
+        _x = (W - _w) / 2
+        _y = H - 16 * MM - _h
+        _bg = Image.new('RGB', org_img.size, (0, 128, 128))
+        _bg.paste(org_img, mask=org_img.split()[3])
+        _buf = io.BytesIO(); _bg.save(_buf, 'JPEG', quality=95); _buf.seek(0)
+        c.drawImage(ImageReader(_buf), _x, _y, _w, _h)
+
+    # Line 2: Event name with underline (slightly smaller)
+    ev_img = deva(event, pt=13, bold=True, color=(255, 220, 150))
+    if ev_img:
+        _w = min(ev_img.width * 0.75, W - 20 * MM)
+        _h = ev_img.height * 0.75
+        _x = (W - _w) / 2
+        _y = H - 30 * MM - _h
+        _bg = Image.new('RGB', ev_img.size, (0, 109, 109))
+        _bg.paste(ev_img, mask=ev_img.split()[3])
+        _buf = io.BytesIO(); _bg.save(_buf, 'JPEG', quality=95); _buf.seek(0)
+        c.drawImage(ImageReader(_buf), _x, _y, _w, _h)
+        # Underline
+        c.setStrokeColor(GOLD_T); c.setLineWidth(0.6)
+        c.line(_x, _y - 1.5 * MM, _x + _w, _y - 1.5 * MM)
+
+    # Line 3: Date or expiry
+    date_str = expiry if expiry else ''
+    if date_str:
+        dt_img = deva(date_str, pt=11, bold=False, color=(255, 255, 200))
+        if dt_img:
+            _w = min(dt_img.width * 0.75, W - 20 * MM)
+            _h = dt_img.height * 0.75
+            _x = (W - _w) / 2
+            _y = H - 44 * MM - _h
+            _bg = Image.new('RGB', dt_img.size, (0, 109, 109))
+            _bg.paste(dt_img, mask=dt_img.split()[3])
+            _buf = io.BytesIO(); _bg.save(_buf, 'JPEG', quality=95); _buf.seek(0)
+            c.drawImage(ImageReader(_buf), _x, _y, _w, _h)
+
+    # ── Body area ─────────────────────────────────────────────────
+    BODY_TOP = H - HDR - 1.5 * MM
+    BODY_H   = BODY_TOP - 18 * MM  # leave room for notes at bottom
+    PAD      = 8 * MM
+
+    # ── Circle logo (left) ────────────────────────────────────────
+    CIRCLE_R  = 28 * MM
+    CIRCLE_CX = PAD + CIRCLE_R
+    CIRCLE_CY = BODY_TOP - BODY_H / 2
+
+    # Teal circle background
+    c.setFillColor(TEAL2)
+    c.circle(CIRCLE_CX, CIRCLE_CY, CIRCLE_R + 1.5 * MM, fill=1, stroke=0)
+    # White ring
+    c.setFillColor(WHITE2)
+    c.circle(CIRCLE_CX, CIRCLE_CY, CIRCLE_R + 0.8 * MM, fill=1, stroke=0)
+    c.setFillColor(TEAL1)
+    c.circle(CIRCLE_CX, CIRCLE_CY, CIRCLE_R, fill=1, stroke=0)
+
+    # Logo image inside circle
+    logo_placed = False
+    if logo_url:
+        try:
+            import urllib.request, tempfile as _tf
+            _ext = '.png' if logo_url.lower().endswith('.png') else '.jpg'
+            _tmp = _tf.NamedTemporaryFile(delete=False, suffix=_ext)
+            urllib.request.urlretrieve(logo_url, _tmp.name)
+            logo_img = Image.open(_tmp.name).convert('RGBA')
+            # Circular crop
+            size = min(logo_img.size)
+            mask_img = Image.new('L', logo_img.size, 0)
+            from PIL import ImageDraw as _ID
+            draw = _ID.Draw(mask_img)
+            draw.ellipse([0, 0, size, size], fill=255)
+            logo_img = logo_img.crop((0, 0, size, size))
+            logo_img.putalpha(mask_img.crop((0, 0, size, size)))
+            _logo_size = CIRCLE_R * 1.8
+            _buf = io.BytesIO(); logo_img.save(_buf, 'PNG'); _buf.seek(0)
+            c.drawImage(ImageReader(_buf),
+                        CIRCLE_CX - _logo_size/2, CIRCLE_CY - _logo_size/2,
+                        _logo_size, _logo_size, mask='auto')
+            logo_placed = True
+        except Exception:
+            pass
+
+    if not logo_placed:
+        # Text fallback inside circle
+        c.setFillColor(WHITE2); c.setFont('PP-Bold', 9)
+        c.drawCentredString(CIRCLE_CX, CIRCLE_CY, 'LOGO')
+
+    # ── Fields (centre) ───────────────────────────────────────────
+    FIELD_X  = CIRCLE_CX + CIRCLE_R + 8 * MM
+    FIELD_W  = W * 0.55
+    cur_y    = BODY_TOP - 8 * MM
+
+    def t3_field(label_hi, value, val_is_hindi=False):
+        nonlocal cur_y
+        if not value: return
+
+        # Hindi label
+        lbl_img = deva(label_hi + '  :', pt=9, bold=False, color=(80, 80, 80))
+        if lbl_img:
+            _w = lbl_img.width * 0.75; _h = lbl_img.height * 0.75
+            c.drawImage(irl(lbl_img), FIELD_X, cur_y - _h, _w, _h, mask='auto')
+
+        # Value — Hindi or English
+        if val_is_hindi:
+            val_img = deva(value, pt=13, bold=True, color=(26, 26, 26))
+            if val_img:
+                _w2 = min(val_img.width * 0.75, FIELD_W)
+                _h2 = val_img.height * 0.75
+                c.drawImage(irl(val_img), FIELD_X, cur_y - _h - _h2 - 1*MM, _w2, _h2, mask='auto')
+                cur_y -= _h + _h2 + 5 * MM
+            else:
+                cur_y -= 14 * MM
+        else:
+            c.setFillColor(INK2); c.setFont('PP-Bold', 13)
+            c.drawString(FIELD_X, cur_y - 12 * MM, str(value)[:25])
+            cur_y -= 14 * MM
+
+        # Divider
+        c.setStrokeColor(colors.HexColor('#DDDDDD')); c.setLineWidth(0.4)
+        c.line(FIELD_X, cur_y - 1 * MM, FIELD_X + FIELD_W, cur_y - 1 * MM)
+        cur_y -= 3 * MM
+
+    t3_field('आई. डी. कोड', vol_id, val_is_hindi=False)
+    t3_field('नाम', name_hi or name_en, val_is_hindi=bool(name_hi))
+    t3_field('संगठन दायित्व', role_hi, val_is_hindi=True)
+
+    # ── QR code (top right) ───────────────────────────────────────
+    QR_SIZE = 28 * MM
+    QR_X    = W - QR_SIZE - PAD
+    QR_Y    = BODY_TOP - QR_SIZE - 2 * MM
+
+    verify_url = vol.get('verify_url', '')
+    if verify_url:
+        qr_data = f"{verify_url}/{vol_id}"
+    else:
+        qr_data = vol_id
+
+    try:
+        qr = qr_image(qr_data, px=7)
+        qr = qr.resize((int(QR_SIZE * 3), int(QR_SIZE * 3)), Image.NEAREST)
+        c.drawImage(irl(qr), QR_X, QR_Y, QR_SIZE, QR_SIZE)
+        c.setFillColor(GREY); c.setFont('PP-Light', 5)
+        c.drawCentredString(QR_X + QR_SIZE / 2, QR_Y - 3 * MM, 'SCAN TO VERIFY')
+    except Exception:
+        pass
+
+    # ── Bottom notes (left) ───────────────────────────────────────
+    NOTE_Y = 16 * MM
+    c.setStrokeColor(GOLD_T); c.setLineWidth(0.5)
+    c.line(PAD, NOTE_Y + 3 * MM, W * 0.58, NOTE_Y + 3 * MM)
+
+    for i, note in enumerate([note1, note2]):
+        if not note: continue
+        n_img = deva('* ' + note, pt=7, bold=False, color=(40, 40, 40))
+        if n_img:
+            _w = min(n_img.width * 0.75, W * 0.55)
+            _h = n_img.height * 0.75
+            c.drawImage(irl(n_img), PAD, NOTE_Y - i * 7 * MM - _h, _w, _h, mask='auto')
+
+    # ── Signing authority (right) ─────────────────────────────────
+    AUTH_X = W * 0.62
+    AUTH_W = W - AUTH_X - PAD
+
+    # Signature image (from event signing_image URL)
+    sign_img_url = str(vol.get('signing_image', '')).strip()
+    SIG_H = 12 * MM
+    SIG_Y = NOTE_Y + 4 * MM
+
+    if sign_img_url:
+        try:
+            import urllib.request, tempfile as _tf2
+            _ext2 = '.png' if 'png' in sign_img_url.lower() else '.jpg'
+            _tmp2 = _tf2.NamedTemporaryFile(delete=False, suffix=_ext2)
+            urllib.request.urlretrieve(sign_img_url, _tmp2.name)
+            sig_img = Image.open(_tmp2.name).convert('RGBA')
+            # Scale to fit width
+            sig_ar  = sig_img.width / sig_img.height
+            sig_w   = min(AUTH_W, sig_ar * SIG_H)
+            sig_h   = SIG_H
+            sig_x   = AUTH_X + (AUTH_W - sig_w) / 2
+            _sbuf2  = io.BytesIO(); sig_img.save(_sbuf2, 'PNG'); _sbuf2.seek(0)
+            c.drawImage(ImageReader(_sbuf2), sig_x, SIG_Y, sig_w, sig_h, mask='auto')
+        except Exception:
+            pass
+
+    # Signature line
+    c.setStrokeColor(INK2); c.setLineWidth(0.5)
+    c.line(AUTH_X, NOTE_Y + 3 * MM, AUTH_X + AUTH_W, NOTE_Y + 3 * MM)
+
+    # "Issuing Authority" label
+    c.setFillColor(TEAL1); c.setFont('PP-Bold', 7)
+    c.drawCentredString(AUTH_X + AUTH_W / 2, 4 * MM, 'Issuing Authority')
+
+    # Authority name and title
+    auth_name = str(vol.get('signing_authority', '')).strip()
+    if auth_name:
+        c.setFillColor(INK2); c.setFont('PP-Bold', 8)
+        c.drawCentredString(AUTH_X + AUTH_W / 2, NOTE_Y - 3 * MM, auth_name)
+        auth_title = str(vol.get('signing_title', '')).strip()
+        if auth_title:
+            c.setFillColor(GREY); c.setFont('PP', 7)
+            c.drawCentredString(AUTH_X + AUTH_W / 2, NOTE_Y - 7 * MM, auth_title)
+
+    # ── Outer border ──────────────────────────────────────────────
+    c.setStrokeColor(TEAL2); c.setLineWidth(1.5)
+    c.roundRect(1 * MM, 1 * MM, W - 2 * MM, H - 2 * MM, 3 * MM, fill=0, stroke=1)
+    c.setStrokeColor(GOLD_T); c.setLineWidth(0.4)
+    c.roundRect(2 * MM, 2 * MM, W - 4 * MM, H - 4 * MM, 2.5 * MM, fill=0, stroke=1)
+

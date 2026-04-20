@@ -43,6 +43,11 @@ def build_pdf_bytes(vols, size='a6', backside=False, template='t1'):
 
     # Monkeypatch dimensions if different from default A6
     orig_CW, orig_CH = pg.CW, pg.CH
+    # T3 manages its own dimensions internally (210x148mm A5)
+    if template == 't3':
+        pass_w = 210 * pg.MM
+        pass_h = 148 * pg.MM
+        CW = pass_w; CH = pass_h
     pg.CW = pass_w
     pg.CH = pass_h
 
@@ -96,6 +101,7 @@ def enrich(vol, event):
     if not v.get('org')           and event.get('org_name'):      v['org']           = event['org_name']
     if not v.get('logo_url')      and event.get('logo_url'):      v['logo_url']      = event['logo_url']
     if not v.get('backside_lang')  and event.get('backside_lang'):  v['backside_lang']  = event['backside_lang']
+    if not v.get('signing_image') and event.get('signing_image'):   v['signing_image']  = event['signing_image']
     if not v.get('backside_text') and event.get('backside_text'): v['backside_text'] = event['backside_text']
     # Always set verify_url from event id so QR points to correct endpoint
     event_id = event.get('id', '')
@@ -169,6 +175,7 @@ def generate_pdf():
         size     = data.get('size', 'a6').lower()
         backside = bool(data.get('backside', False))
         template = data.get('template', 't1').lower()
+        if template == 't3' and size == 'a6': size = 'a5'  # T3 looks best at A5
         log.info(f"Generating PDF for {len(enriched)} volunteers size={size} backside={backside} template={template}")
         buf = build_pdf_bytes(enriched, size=size, backside=backside, template=template)
         fn  = f"passes_{(event.get('name') or 'event').replace(' ','_')[:40]}_{len(enriched)}.pdf"
@@ -189,6 +196,7 @@ def generate_single():
         size     = data.get('size', 'a6').lower()
         backside = bool(data.get('backside', False))
         template = data.get('template', 't1').lower()
+        if template == 't3' and size == 'a6': size = 'a5'  # T3 looks best at A5
         log.info(f"Generating single pass for {vol.get('id','unknown')} size={size} backside={backside} template={template}")
         buf = build_pdf_bytes([vol], size=size, backside=backside, template=template)
         fn  = f"pass_{str(vol.get('id') or vol.get('name') or 'pass').replace(' ','_')[:30]}.pdf"

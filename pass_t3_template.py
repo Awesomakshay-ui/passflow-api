@@ -28,6 +28,52 @@ MONTHS_HI = {
 }
 
 
+def fix_image_url(url):
+    """Convert Google Drive share links to direct image URLs."""
+    if not url:
+        return url
+    # Handle Google Drive /file/d/{id}/view links
+    import re
+    m = re.search(r'drive[.]google[.]com/file/d/([a-zA-Z0-9_-]+)', url)
+    if m:
+        return f"https://drive.google.com/uc?export=view&id={m.group(1)}"
+    # Handle Google Drive open?id= links
+    m2 = re.search(r'drive[.]google[.]com/open[?]id=([a-zA-Z0-9_-]+)', url)
+    if m2:
+        return f"https://drive.google.com/uc?export=view&id={m2.group(1)}"
+    return url
+
+
+def fetch_image_as_dataurl(url):
+    """Fetch an image URL and return as base64 data URL for embedding in HTML.
+    Handles Google Drive, regular URLs. Returns original URL on failure."""
+    if not url:
+        return url
+    try:
+        import urllib.request
+        import mimetypes
+        # Build request with browser-like headers to avoid 403s
+        req = urllib.request.Request(url, headers={
+            'User-Agent': 'Mozilla/5.0 (compatible; PassFlow/1.0)',
+            'Accept': 'image/*,*/*',
+        })
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = resp.read()
+            content_type = resp.headers.get('Content-Type', 'image/png').split(';')[0].strip()
+            # Guess from URL if content-type is generic
+            if content_type in ('application/octet-stream', 'text/html', ''):
+                ext = url.split('?')[0].rsplit('.', 1)[-1].lower()
+                content_type = {'png': 'image/png', 'jpg': 'image/jpeg',
+                                'jpeg': 'image/jpeg', 'gif': 'image/gif',
+                                'webp': 'image/webp'}.get(ext, 'image/png')
+            b64 = base64.b64encode(data).decode()
+            return f"data:{content_type};base64,{b64}"
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"fetch_image_as_dataurl failed for {url}: {e}")
+        return url  # fall back to original URL
+
+
 def format_date_hi(date_str):
     if not date_str:
         return ''
@@ -422,9 +468,9 @@ def _pass_context(vol, event=None):
     vol_id     = str(vol.get('id') or '').strip()
     name       = str(vol.get('name_hi') or vol.get('name') or '').strip()
     role       = str(vol.get('role') or '').strip()
-    logo_url   = str(vol.get('logo_url') or event.get('logo_url') or '').strip()
-    bg_image   = str(vol.get('bg_image') or event.get('bg_image') or '').strip()
-    sig_img    = str(vol.get('signing_image') or event.get('signing_image') or '').strip()
+    logo_url   = fetch_image_as_dataurl(fix_image_url(str(vol.get('logo_url') or event.get('logo_url') or '').strip()))
+    bg_image   = fetch_image_as_dataurl(fix_image_url(str(vol.get('bg_image') or event.get('bg_image') or '').strip()))
+    sig_img    = fetch_image_as_dataurl(fix_image_url(str(vol.get('signing_image') or event.get('signing_image') or '').strip()))
     sig_name   = str(vol.get('signing_authority') or '').strip()
     sig_title  = str(vol.get('signing_title') or '').strip()
 

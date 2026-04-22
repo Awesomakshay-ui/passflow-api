@@ -45,33 +45,28 @@ def fix_image_url(url):
 
 
 def fetch_image_as_dataurl(url):
-    """Fetch an image URL and return as base64 data URL for embedding in HTML.
-    Handles Google Drive, regular URLs. Returns original URL on failure."""
+    """Fetch image URL → base64 data URL. Uses requests for redirect/auth handling."""
     if not url:
         return url
     try:
-        import urllib.request
-        import mimetypes
-        # Build request with browser-like headers to avoid 403s
-        req = urllib.request.Request(url, headers={
-            'User-Agent': 'Mozilla/5.0 (compatible; PassFlow/1.0)',
-            'Accept': 'image/*,*/*',
+        import requests as _req
+        resp = _req.get(url, timeout=10, allow_redirects=True, headers={
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0',
+            'Accept': 'image/*,*/*;q=0.8',
         })
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = resp.read()
-            content_type = resp.headers.get('Content-Type', 'image/png').split(';')[0].strip()
-            # Guess from URL if content-type is generic
-            if content_type in ('application/octet-stream', 'text/html', ''):
-                ext = url.split('?')[0].rsplit('.', 1)[-1].lower()
-                content_type = {'png': 'image/png', 'jpg': 'image/jpeg',
-                                'jpeg': 'image/jpeg', 'gif': 'image/gif',
-                                'webp': 'image/webp'}.get(ext, 'image/png')
-            b64 = base64.b64encode(data).decode()
-            return f"data:{content_type};base64,{b64}"
+        resp.raise_for_status()
+        ct = resp.headers.get('Content-Type', 'image/png').split(';')[0].strip()
+        # If Google Drive returns HTML (login page), bail out
+        if 'text/html' in ct:
+            import logging
+            logging.getLogger(__name__).warning(f"fetch_image_as_dataurl: got HTML for {url} — image may be private")
+            return url
+        b64 = base64.b64encode(resp.content).decode()
+        return f"data:{ct};base64,{b64}"
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(f"fetch_image_as_dataurl failed for {url}: {e}")
-        return url  # fall back to original URL
+        return url
 
 
 def format_date_hi(date_str):

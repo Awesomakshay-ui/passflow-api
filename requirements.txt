@@ -1,11 +1,13 @@
-# PassFlow Pass Generator dependencies — v2
-flask==3.0.3
-flask-cors==4.0.1
-gunicorn==22.0.0
-reportlab==4.2.2
-Pillow==10.4.0
-openpyxl==3.1.5
-numpy==1.26.4
-fonttools==4.53.1
-uharfbuzz==0.39.3
-freetype-py==2.4.0
+flask>=3.0.0
+flask-cors>=4.0.0
+reportlab>=4.0.0
+qrcode>=7.4.0
+Pillow>=10.0.0
+fonttools>=4.40.0
+numpy>=1.24.0
+uharfbuzz>=0.37.0
+freetype-py>=2.4.0
+gunicorn>=21.0.0
+pypdf>=4.0.0
+weasyprint>=60.0
+jinja2>=3.1.0

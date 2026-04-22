@@ -16,6 +16,15 @@ def get_generator():
         _generator = pg
     return _generator
 
+# T3 HTML-based renderer (WeasyPrint)
+_t3_renderer = None
+def get_t3_renderer():
+    global _t3_renderer
+    if _t3_renderer is None:
+        import pass_t3_template as t3
+        _t3_renderer = t3
+    return _t3_renderer
+
 # Page sizes in mm (width x height for landscape)
 PAGE_SIZES = {
     'a6':  (148, 105),
@@ -31,9 +40,7 @@ def build_pdf_bytes(vols, size='a6', backside=False, template='t1'):
     CW  = w_mm * MM
     CH  = h_mm * MM
 
-    # For A4 2-up: two passes side by side on one page
     two_up = (size == 'a4')
-    # Single pass dimensions for 2-up
     if two_up:
         pass_w = CW / 2
         pass_h = CH
@@ -41,13 +48,7 @@ def build_pdf_bytes(vols, size='a6', backside=False, template='t1'):
         pass_w = CW
         pass_h = CH
 
-    # Monkeypatch dimensions if different from default A6
     orig_CW, orig_CH = pg.CW, pg.CH
-    # T3 manages its own dimensions internally (210x148mm A5)
-    if template == 't3':
-        pass_w = 210 * pg.MM
-        pass_h = 148 * pg.MM
-        CW = pass_w; CH = pass_h
     pg.CW = pass_w
     pg.CH = pass_h
 
@@ -56,14 +57,11 @@ def build_pdf_bytes(vols, size='a6', backside=False, template='t1'):
     c = rl_canvas.Canvas(buf, pagesize=(CW, CH))
 
     if two_up:
-        # Pair up volunteers, 2 per page
         for i in range(0, len(vols), 2):
-            # Left pass
             c.saveState()
             c.translate(0, 0)
             pg.draw_pass(c, vols[i], template)
             c.restoreState()
-            # Right pass (if exists)
             if i + 1 < len(vols):
                 c.saveState()
                 c.translate(pass_w, 0)
@@ -88,11 +86,52 @@ def build_pdf_bytes(vols, size='a6', backside=False, template='t1'):
                 c.showPage()
 
     c.save()
-    # Restore original dimensions
     pg.CW = orig_CW
     pg.CH = orig_CH
     buf.seek(0)
     return buf
+
+
+def build_t3_buf(vols, event, backside=False):
+    """Render T3 via HTML/WeasyPrint. Returns BytesIO ready for send_file."""
+    t3 = get_t3_renderer()
+    pdf_bytes = t3.render_t3_multi_pdf(vols, event)
+    # Optional: merge backside PDF if requested (T3 backside still uses ReportLab)
+    if backside:
+        from pypdf import PdfReader, PdfWriter
+        # Build backside using existing ReportLab code
+        backside_buf = build_pdf_bytes(vols, size='a5', backside=True, template='t1')
+        # For T3 we only want the backside pages, not the T1 front. Simplest: render
+        # just the backside by calling draw_backside on a fresh canvas.
+        pg = get_generator()
+        MM = pg.MM
+        CW = 210 * MM; CH = 148 * MM
+        bb = io.BytesIO()
+        from reportlab.pdfgen import canvas as rl_canvas
+        orig_CW, orig_CH = pg.CW, pg.CH
+        pg.CW = CW; pg.CH = CH
+        c = rl_canvas.Canvas(bb, pagesize=(CW, CH))
+        for v in vols:
+            pg.draw_backside(c, v, CW, CH)
+            c.showPage()
+        c.save()
+        pg.CW = orig_CW; pg.CH = orig_CH
+        bb.seek(0)
+
+        # Interleave: front, back, front, back, ...
+        front = PdfReader(io.BytesIO(pdf_bytes))
+        back  = PdfReader(bb)
+        writer = PdfWriter()
+        for i in range(len(vols)):
+            if i < len(front.pages): writer.add_page(front.pages[i])
+            if i < len(back.pages):  writer.add_page(back.pages[i])
+        out = io.BytesIO()
+        writer.write(out)
+        out.seek(0)
+        return out
+
+    return io.BytesIO(pdf_bytes)
+
 
 def enrich(vol, event):
     v = dict(vol)
@@ -102,8 +141,8 @@ def enrich(vol, event):
     if not v.get('logo_url')      and event.get('logo_url'):      v['logo_url']      = event['logo_url']
     if not v.get('backside_lang')  and event.get('backside_lang'):  v['backside_lang']  = event['backside_lang']
     if not v.get('signing_image') and event.get('signing_image'):   v['signing_image']  = event['signing_image']
+    if not v.get('bg_image')      and event.get('bg_image'):        v['bg_image']       = event['bg_image']
     if not v.get('backside_text') and event.get('backside_text'): v['backside_text'] = event['backside_text']
-    # Always set verify_url from event id so QR points to correct endpoint
     event_id = event.get('id', '')
     if event_id:
         v['verify_url'] = f'https://passflow-api.caakshayshukla.workers.dev/v/{event_id}'
@@ -133,6 +172,31 @@ def test_deva():
     return jsonify(results)
 
 
+@app.route('/test-t3', methods=['GET'])
+def test_t3():
+    """Quick test endpoint: generates a sample T3 pass and returns it."""
+    sample_vol = {
+        'id': 'SMDR0010',
+        'name': 'Amod Kumar Singh',
+        'name_hi': 'आमोद कुमार सिंह',
+        'role': 'संगठन मंत्री',
+        'expiry': '29-04-2026',
+        'signing_authority': 'Champat Rai',
+        'signing_title': 'General Secretary',
+    }
+    sample_event = {
+        'id': 'test-event',
+        'name': 'श्री शिव मन्दिर ध्वजारोहण, प्रवेश पत्र',
+        'org_name': 'श्री राम जन्मभूमि तीर्थ क्षेत्र',
+        'expiry_date': '29-04-2026',
+    }
+    vol = enrich(sample_vol, sample_event)
+    t3 = get_t3_renderer()
+    pdf_bytes = t3.render_t3_pdf(vol, sample_event)
+    return send_file(io.BytesIO(pdf_bytes), mimetype='application/pdf',
+                     as_attachment=False, download_name='test-t3.pdf')
+
+
 @app.route('/debug-hb', methods=['GET'])
 def debug_hb():
     result = {}
@@ -141,7 +205,7 @@ def debug_hb():
     result['font_dir_exists'] = os.path.exists(font_dir)
     result['fonts']           = os.listdir(font_dir) if os.path.exists(font_dir) else []
     result['noto_exists']     = os.path.exists(font_path)
-    for lib in ['uharfbuzz', 'freetype', 'numpy']:
+    for lib in ['uharfbuzz', 'freetype', 'numpy', 'weasyprint', 'jinja2']:
         try:    __import__(lib); result[lib] = 'OK'
         except Exception as e: result[lib] = 'ERROR: ' + str(e)
     if result.get('uharfbuzz') == 'OK' and result.get('noto_exists'):
@@ -153,13 +217,6 @@ def debug_hb():
             buf2 = hb.Buffer(); buf2.add_str('अनूप'); buf2.guess_segment_properties(); hb.shape(hf, buf2, {})
             result['shaping'] = f'OK — {len(buf2.glyph_infos)} glyphs'
         except Exception as e: result['shaping'] = 'ERROR: ' + str(e)
-        if result.get('freetype') == 'OK':
-            try:
-                import freetype
-                face = freetype.Face(font_path); face.set_pixel_sizes(0, px)
-                face.load_glyph(buf2.glyph_infos[0].codepoint, freetype.FT_LOAD_RENDER)
-                result['freetype_render'] = f'OK — {face.glyph.bitmap.width}x{face.glyph.bitmap.rows}'
-            except Exception as e: result['freetype_render'] = 'ERROR: ' + str(e)
     return jsonify(result)
 
 @app.route('/generate-pdf', methods=['POST'])
@@ -175,9 +232,13 @@ def generate_pdf():
         size     = data.get('size', 'a6').lower()
         backside = bool(data.get('backside', False))
         template = data.get('template', 't1').lower()
-        if template == 't3' and size == 'a6': size = 'a5'  # T3 looks best at A5
         log.info(f"Generating PDF for {len(enriched)} volunteers size={size} backside={backside} template={template}")
-        buf = build_pdf_bytes(enriched, size=size, backside=backside, template=template)
+
+        if template == 't3':
+            buf = build_t3_buf(enriched, event, backside=backside)
+        else:
+            buf = build_pdf_bytes(enriched, size=size, backside=backside, template=template)
+
         fn  = f"passes_{(event.get('name') or 'event').replace(' ','_')[:40]}_{len(enriched)}.pdf"
         return send_file(buf, mimetype='application/pdf', as_attachment=True, download_name=fn)
     except Exception as e:
@@ -196,9 +257,13 @@ def generate_single():
         size     = data.get('size', 'a6').lower()
         backside = bool(data.get('backside', False))
         template = data.get('template', 't1').lower()
-        if template == 't3' and size == 'a6': size = 'a5'  # T3 looks best at A5
         log.info(f"Generating single pass for {vol.get('id','unknown')} size={size} backside={backside} template={template}")
-        buf = build_pdf_bytes([vol], size=size, backside=backside, template=template)
+
+        if template == 't3':
+            buf = build_t3_buf([vol], event, backside=backside)
+        else:
+            buf = build_pdf_bytes([vol], size=size, backside=backside, template=template)
+
         fn  = f"pass_{str(vol.get('id') or vol.get('name') or 'pass').replace(' ','_')[:30]}.pdf"
         return send_file(buf, mimetype='application/pdf', as_attachment=True, download_name=fn)
     except Exception as e:

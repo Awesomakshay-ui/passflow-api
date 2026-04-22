@@ -44,6 +44,24 @@ def fix_image_url(url):
     return url
 
 
+def logo_file_as_dataurl(filename):
+    """Read a logo file from the same directory and return as base64 data URL."""
+    try:
+        filepath = os.path.join(os.path.dirname(__file__), filename)
+        if not os.path.exists(filepath):
+            return ''
+        with open(filepath, 'rb') as f:
+            data = f.read()
+        ext = filename.rsplit('.', 1)[-1].lower()
+        ct = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+              'gif': 'image/gif', 'webp': 'image/webp'}.get(ext, 'image/png')
+        return f"data:{ct};base64,{base64.b64encode(data).decode()}"
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"logo_file_as_dataurl failed: {e}")
+        return ''
+
+
 def fetch_image_as_dataurl(url):
     """Fetch image URL → base64 data URL. Uses requests for redirect/auth handling."""
     if not url:
@@ -463,7 +481,13 @@ def _pass_context(vol, event=None):
     vol_id     = str(vol.get('id') or '').strip()
     name       = str(vol.get('name_hi') or vol.get('name') or '').strip()
     role       = str(vol.get('role') or '').strip()
-    logo_url   = fetch_image_as_dataurl(fix_image_url(str(vol.get('logo_url') or event.get('logo_url') or '').strip()))
+    _raw_logo = fix_image_url(str(vol.get('logo_url') or event.get('logo_url') or '').strip())
+    # If it's the local Render-hosted logo, read from disk directly (faster + reliable)
+    if 'passflow-pass-generator.onrender.com/static/logo/' in _raw_logo:
+        _fname = _raw_logo.rsplit('/', 1)[-1]
+        logo_url = logo_file_as_dataurl(_fname) or fetch_image_as_dataurl(_raw_logo)
+    else:
+        logo_url = fetch_image_as_dataurl(_raw_logo)
     bg_image   = fetch_image_as_dataurl(fix_image_url(str(vol.get('bg_image') or event.get('bg_image') or '').strip()))
     sig_img    = fetch_image_as_dataurl(fix_image_url(str(vol.get('signing_image') or event.get('signing_image') or '').strip()))
     sig_name   = str(vol.get('signing_authority') or '').strip()

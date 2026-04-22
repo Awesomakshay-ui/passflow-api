@@ -139,6 +139,9 @@ def enrich(vol, event):
     if not v.get('expiry')        and event.get('expiry_date'):   v['expiry']        = event['expiry_date']
     if not v.get('org')           and event.get('org_name'):      v['org']           = event['org_name']
     if not v.get('logo_url')      and event.get('logo_url'):      v['logo_url']      = event['logo_url']
+    # If no logo set, use the default SRJBTK logo served locally
+    if not v.get('logo_url'):
+        v['logo_url'] = 'https://passflow-pass-generator.onrender.com/static/logo/srjbtk_logo_official.png'
     if not v.get('backside_lang')  and event.get('backside_lang'):  v['backside_lang']  = event['backside_lang']
     if not v.get('signing_image') and event.get('signing_image'):   v['signing_image']  = event['signing_image']
     if not v.get('bg_image')      and event.get('bg_image'):        v['bg_image']       = event['bg_image']
@@ -147,6 +150,17 @@ def enrich(vol, event):
     if event_id:
         v['verify_url'] = f'https://passflow-api.caakshayshukla.workers.dev/v/{event_id}'
     return v
+
+@app.route('/static/logo/<filename>', methods=['GET'])
+def serve_logo(filename):
+    """Serve static logo/image files from the app directory."""
+    from flask import send_from_directory
+    import re
+    # Security: only allow safe filenames
+    if not re.match(r'^[a-zA-Z0-9_\-\.]+$', filename):
+        return 'Not found', 404
+    return send_from_directory(os.path.dirname(__file__), filename)
+
 
 @app.route('/health', methods=['GET'])
 def health():

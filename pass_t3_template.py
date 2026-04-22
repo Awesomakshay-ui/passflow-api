@@ -150,7 +150,7 @@ T3_CSS = """
 
 html, body {
   font-family: 'NotoDeva', 'Poppins', sans-serif;
-  background: #F4F0E5;
+  background: #0f52ba;
 }
 
 .pass {
@@ -158,7 +158,7 @@ html, body {
   width: 210mm;
   height: 148mm;
   overflow: hidden;
-  background: #F4F0E5;
+  background: #0f52ba;
   page-break-after: always;
 }
 .pass:last-child { page-break-after: auto; }
@@ -256,7 +256,7 @@ html, body {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background-color: #3F8F89;
+  background-color: #0f52ba;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

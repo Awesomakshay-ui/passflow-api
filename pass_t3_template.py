@@ -150,7 +150,7 @@ T3_CSS = """
 
 html, body {
   font-family: 'NotoDeva', 'Poppins', sans-serif;
-  background: #0f52ba;
+  background: #F4F0E5;
 }
 
 .pass {
@@ -158,7 +158,7 @@ html, body {
   width: 210mm;
   height: 148mm;
   overflow: hidden;
-  background: #0f52ba;
+  background: #F4F0E5;
   page-break-after: always;
 }
 .pass:last-child { page-break-after: auto; }
@@ -178,7 +178,7 @@ html, body {
   left: 0;
   right: 0;
   height: 50mm;
-  background: linear-gradient(180deg, #3F8F89 0%, #2C7873 100%);
+  background: linear-gradient(180deg, #1a6fd4 0%, #0f52ba 100%);
   border-radius: 0 0 50% 50% / 0 0 20% 20%;
   z-index: 1;
   padding: 8mm 14mm 0 14mm;
@@ -332,7 +332,7 @@ html, body {
   left: 0;
   right: 0;
   height: 28mm;
-  background: linear-gradient(180deg, #3F8F89 0%, #2C7873 100%);
+  background: linear-gradient(180deg, #1a6fd4 0%, #0f52ba 100%);
   z-index: 2;
   padding: 4mm 10mm 3mm 10mm;
   display: flex;

@@ -118,9 +118,9 @@ html, body {
   top: 0;
   left: 0;
   right: 0;
-  height: 58mm;
+  height: 50mm;
   background: linear-gradient(180deg, #3F8F89 0%, #2C7873 100%);
-  border-radius: 0 0 50% 50% / 0 0 22% 22%;
+  border-radius: 0 0 50% 50% / 0 0 20% 20%;
   z-index: 1;
   padding: 8mm 14mm 0 14mm;
   text-align: center;
@@ -173,21 +173,21 @@ html, body {
 
 .body {
   position: absolute;
-  top: 58mm;
+  top: 50mm;
   left: 0;
   right: 0;
   bottom: 28mm;
-  padding: 5mm 10mm 0 10mm;
+  padding: 3mm 8mm 0 8mm;
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 6mm;
+  gap: 5mm;
 }
 
 .logo-wrap {
   flex: 0 0 auto;
-  width: 42mm;
-  height: 42mm;
+  width: 46mm;
+  height: 46mm;
   border-radius: 50%;
   background: white;
   padding: 1.5mm;
@@ -208,7 +208,7 @@ html, body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 3mm;
+  gap: 2.5mm;
   padding-right: 2mm;
 }
 
@@ -234,7 +234,7 @@ html, body {
 
 .field-value {
   flex: 1;
-  font-size: 15pt;
+  font-size: 16pt;
   font-weight: 700;
   color: #1A1A1A;
 }

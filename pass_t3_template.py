@@ -273,16 +273,17 @@ html, body {
 
 .fields {
   flex: 1;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   padding-right: 2mm;
-  padding-top: 4mm;
 }
 
 .field-row {
   display: flex;
   align-items: baseline;
   font-family: 'NotoDeva', sans-serif;
-  margin-bottom: 2.5mm;
+  margin-bottom: 2mm;
 }
 
 .field-label {
@@ -400,10 +401,9 @@ html, body {
 
 .sign-name {
   font-family: 'NotoDeva', serif;
-  font-size: 11pt;
+  font-size: 12pt;
   font-weight: 700;
   color: white;
-  margin-top: 0.5mm;
   line-height: 1.2;
 }
 
@@ -419,8 +419,8 @@ html, body {
   font-size: 8pt;
   font-weight: 700;
   color: #FFDD96;
-  letter-spacing: 1pt;
-  margin-top: 1.5mm;
+  letter-spacing: 0.5pt;
+  margin-bottom: 1mm;
 }
 """
 
@@ -484,9 +484,9 @@ PASS_DIV_TEMPLATE = Template(r"""
 
     <div class="authority">
       {% if signing_image %}<img src="{{ signing_image }}" class="sign-image" alt="Signature"/>{% endif %}
+      <div class="sign-issuing">Issuing Authority :</div>
       {% if signing_name %}<div class="sign-name">{{ signing_name }}</div>{% endif %}
       {% if signing_title %}<div class="sign-title">{{ signing_title }}</div>{% endif %}
-      <div class="sign-issuing">Issuing Authority</div>
     </div>
   </div>
 </div>

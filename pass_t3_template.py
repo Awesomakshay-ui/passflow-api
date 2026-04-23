@@ -181,7 +181,7 @@ html, body {
   background: linear-gradient(180deg, #1a6fd4 0%, #0f52ba 100%);
   border-radius: 0 0 50% 50% / 0 0 20% 20%;
   z-index: 1;
-  padding: 8mm 14mm 0 14mm;
+  padding: 5mm 10mm 0 10mm;
   text-align: center;
 }
 
@@ -200,18 +200,27 @@ html, body {
   pointer-events: none;
 }
 
+.kartakar-label {
+  font-family: 'NotoDeva', serif;
+  font-size: 10pt;
+  font-weight: 500;
+  color: rgba(255,255,255,0.85);
+  letter-spacing: 1pt;
+  margin-top: 1mm;
+}
+
 .org-name {
   font-family: 'NotoDeva', serif;
-  font-size: 22pt;
+  font-size: 26pt;
   font-weight: 700;
   color: white;
-  line-height: 1.1;
-  margin-top: 2mm;
+  line-height: 1.0;
+  margin-top: 1mm;
 }
 
 .event-name {
   font-family: 'NotoDeva', serif;
-  font-size: 13pt;
+  font-size: 15pt;
   font-weight: 700;
   color: #FFDD96;
   margin-top: 3mm;
@@ -256,7 +265,7 @@ html, body {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background-color: #0f52ba;
+  background-color: #F4F0E5;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -267,7 +276,7 @@ html, body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 2.5mm;
+  gap: 1.5mm;
   padding-right: 2mm;
 }
 
@@ -278,7 +287,7 @@ html, body {
 }
 
 .field-label {
-  flex: 0 0 34mm;
+  flex: 0 0 28mm;
   font-size: 11pt;
   font-weight: 600;
   color: #404040;
@@ -304,8 +313,8 @@ html, body {
 }
 
 .qr {
-  width: 26mm;
-  height: 26mm;
+  width: 34mm;
+  height: 34mm;
   background: white;
   padding: 1mm;
   border: 0.2mm solid #DDD;
@@ -421,9 +430,10 @@ PASS_DIV_TEMPLATE = Template(r"""
   {% if bg_image_url %}<div class="bg-temple" style="background-image: url('{{ bg_image_url }}')"></div>{% endif %}
 
   <div class="header">
+    <div class="kartakar-label">कार्यकर्ता प्रवेश पत्र</div>
     <div class="org-name">{{ org }}</div>
     {% if event %}<div><span class="event-name">{{ event }}</span></div>{% endif %}
-    {% if date_hi %}<div><span class="event-date">{{ date_hi }}</span></div>{% endif %}
+    {% if date_hi %}<div><span class="event-date">Valid upto: {{ date_hi }}</span></div>{% endif %}
   </div>
 
   <div class="body">
@@ -443,10 +453,17 @@ PASS_DIV_TEMPLATE = Template(r"""
         <span class="field-value">{{ name }}</span>
       </div>
       <div class="field-row">
-        <span class="field-label">संगठन दायित्व</span>
+        <span class="field-label">दायित्व</span>
         <span class="field-colon">:</span>
         <span class="field-value">{{ role }}</span>
       </div>
+      {% if permission %}
+      <div class="field-row">
+        <span class="field-label">अनुमति</span>
+        <span class="field-colon">:</span>
+        <span class="field-value" style="font-size:13pt">{{ permission }}</span>
+      </div>
+      {% endif %}
     </div>
 
     <div class="qr-col">
@@ -481,6 +498,7 @@ def _pass_context(vol, event=None):
     vol_id     = str(vol.get('id') or '').strip()
     name       = str(vol.get('name_hi') or vol.get('name') or '').strip()
     role       = str(vol.get('role') or '').strip()
+    permission = str(vol.get('permission') or '').strip()
     _raw_logo = fix_image_url(str(vol.get('logo_url') or event.get('logo_url') or '').strip())
     # If it's the local Render-hosted logo, read from disk directly (faster + reliable)
     if 'passflow-pass-generator.onrender.com/static/logo/' in _raw_logo:
@@ -508,7 +526,7 @@ def _pass_context(vol, event=None):
 
     return dict(
         org=org, event=event_name, date_hi=date_hi,
-        vol_id=vol_id, name=name, role=role,
+        vol_id=vol_id, name=name, role=role, permission=permission,
         logo_url=logo_url, bg_image_url=bg_image,
         qr_dataurl=qr_dataurl,
         note1=note1, note2=note2,

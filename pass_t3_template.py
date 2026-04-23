@@ -248,7 +248,7 @@ html, body {
   padding: 2mm 8mm 0 8mm;
   z-index: 2;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 5mm;
 }
 
@@ -259,6 +259,7 @@ html, body {
   border-radius: 50%;
   background: white;
   padding: 1.5mm;
+  align-self: center;
 }
 
 .logo-inner {
@@ -273,9 +274,8 @@ html, body {
 
 .fields {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  display: block;
+  align-self: center;
   padding-right: 2mm;
 }
 
@@ -283,7 +283,7 @@ html, body {
   display: flex;
   align-items: baseline;
   font-family: 'NotoDeva', sans-serif;
-  margin-bottom: 2mm;
+  margin-bottom: 3mm;
 }
 
 .field-label {
@@ -310,7 +310,7 @@ html, body {
 .qr-col {
   flex: 0 0 auto;
   text-align: center;
-  padding-top: 1mm;
+  align-self: center;
 }
 
 .qr {

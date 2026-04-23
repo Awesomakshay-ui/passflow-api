@@ -239,27 +239,117 @@ html, body {
   border-bottom: 0.3mm solid #C8A04A;
 }
 
-.body {
+.body-table {
   position: absolute;
   top: 50mm;
   left: 0;
   right: 0;
   bottom: 28mm;
-  padding: 2mm 8mm 0 8mm;
+  width: 100%;
+  padding: 0 6mm;
   z-index: 2;
-  display: flex;
-  align-items: stretch;
-  gap: 5mm;
+  border-collapse: collapse;
 }
 
+.logo-cell {
+  width: 44mm;
+  vertical-align: middle;
+  text-align: center;
+  padding: 2mm 4mm 2mm 2mm;
+}
+
+.fields-cell {
+  vertical-align: middle;
+  padding: 0;
+}
+
+.qr-cell {
+  width: 40mm;
+  vertical-align: middle;
+  text-align: center;
+  padding: 2mm;
+}
+
+.fields-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.fields-table tr td {
+  padding: 2mm 1mm;
+  vertical-align: middle;
+}
+
+.fl {
+  font-family: 'NotoDeva', sans-serif;
+  font-size: 10pt;
+  font-weight: 600;
+  color: #404040;
+  white-space: nowrap;
+  width: 28mm;
+}
+
+.fc {
+  font-size: 12pt;
+  font-weight: 700;
+  color: #606060;
+  width: 4mm;
+  text-align: center;
+}
+
+.fv {
+  font-family: 'NotoDeva', sans-serif;
+  font-size: 13pt;
+  font-weight: 700;
+  color: #1A1A1A;
+}
+
+.id-val {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14pt;
+  letter-spacing: 0.5pt;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.qr img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.qr-label {
+  font-family: 'Poppins', sans-serif;
+  font-size: 5pt;
+  color: #999;
+  letter-spacing: 0.5pt;
+  margin-top: 0.8mm;
+}
+
+
 .logo-wrap {
-  flex: 0 0 auto;
   width: 40mm;
   height: 40mm;
   border-radius: 50%;
   background: white;
   padding: 1.5mm;
-  align-self: center;
+  display: inline-block;
 }
 
 .logo-inner {
@@ -272,47 +362,6 @@ html, body {
   background-repeat: no-repeat;
 }
 
-.fields {
-  flex: 1;
-  display: block;
-  align-self: center;
-  padding-right: 2mm;
-}
-
-.field-row {
-  display: flex;
-  align-items: baseline;
-  font-family: 'NotoDeva', sans-serif;
-  margin-bottom: 3mm;
-}
-
-.field-label {
-  flex: 0 0 28mm;
-  font-size: 10pt;
-  font-weight: 600;
-  color: #404040;
-}
-
-.field-colon {
-  flex: 0 0 3mm;
-  font-size: 13pt;
-  font-weight: 700;
-  color: #606060;
-}
-
-.field-value {
-  flex: 1;
-  font-size: 13pt;
-  font-weight: 700;
-  color: #1A1A1A;
-}
-
-.qr-col {
-  flex: 0 0 auto;
-  text-align: center;
-  align-self: center;
-}
-
 .qr {
   width: 34mm;
   height: 34mm;
@@ -320,6 +369,7 @@ html, body {
   padding: 1mm;
   border: 0.2mm solid #DDD;
   border-radius: 1.5mm;
+  display: inline-block;
 }
 
 .qr img {
@@ -435,46 +485,28 @@ PASS_DIV_TEMPLATE = Template(r"""
     {% if date_hi %}<div><span class="event-date">कार्यकर्ता पास- {{ date_hi }} तक मान्य</span></div>{% endif %}
   </div>
 
-  <div class="body">
-    <div class="logo-wrap">
-      <div class="logo-inner"{% if logo_url %} style="background-image: url('{{ logo_url }}')"{% endif %}></div>
-    </div>
-
-    <div class="fields">
-      <div class="field-row">
-        <span class="field-label">आई. डी. कोड</span>
-        <span class="field-colon">:</span>
-        <span class="field-value">{{ vol_id }}</span>
-      </div>
-      <div class="field-row">
-        <span class="field-label">नाम</span>
-        <span class="field-colon">:</span>
-        <span class="field-value">{{ name }}</span>
-      </div>
-      <div class="field-row">
-        <span class="field-label">आधार</span>
-        <span class="field-colon">:</span>
-        <span class="field-value">{{ aadhaar }}</span>
-      </div>
-      <div class="field-row">
-        <span class="field-label">दायित्व</span>
-        <span class="field-colon">:</span>
-        <span class="field-value">{{ role }}</span>
-      </div>
-      {% if permission %}
-      <div class="field-row">
-        <span class="field-label">अनुमति</span>
-        <span class="field-colon">:</span>
-        <span class="field-value">{{ permission }}</span>
-      </div>
-      {% endif %}
-    </div>
-
-    <div class="qr-col">
-      <div class="qr"><img src="{{ qr_dataurl }}" alt="QR"/></div>
-      <div class="qr-label">SCAN TO VERIFY</div>
-    </div>
-  </div>
+  <table class="body-table">
+    <tr>
+      <td class="logo-cell">
+        <div class="logo-wrap">
+          <div class="logo-inner"{% if logo_url %} style="background-image: url('{{ logo_url }}')"{% endif %}></div>
+        </div>
+      </td>
+      <td class="fields-cell">
+        <table class="fields-table">
+          <tr><td class="fl">आई. डी. कोड</td><td class="fc">:</td><td class="fv id-val">{{ vol_id }}</td></tr>
+          <tr><td class="fl">नाम</td><td class="fc">:</td><td class="fv">{{ name }}</td></tr>
+          <tr><td class="fl">आधार</td><td class="fc">:</td><td class="fv">{{ aadhaar }}</td></tr>
+          <tr><td class="fl">दायित्व</td><td class="fc">:</td><td class="fv">{{ role }}</td></tr>
+          {% if permission %}<tr><td class="fl">अनुमति</td><td class="fc">:</td><td class="fv">{{ permission }}</td></tr>{% endif %}
+        </table>
+      </td>
+      <td class="qr-cell">
+        <div class="qr"><img src="{{ qr_dataurl }}" alt="QR"/></div>
+        <div class="qr-label">SCAN TO VERIFY</div>
+      </td>
+    </tr>
+  </table>
 
   <div class="footer">
     <div class="notes">

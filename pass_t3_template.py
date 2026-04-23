@@ -452,6 +452,11 @@ PASS_DIV_TEMPLATE = Template(r"""
         <span class="field-value">{{ name }}</span>
       </div>
       <div class="field-row">
+        <span class="field-label">आधार</span>
+        <span class="field-colon">:</span>
+        <span class="field-value">{{ aadhaar }}</span>
+      </div>
+      <div class="field-row">
         <span class="field-label">दायित्व</span>
         <span class="field-colon">:</span>
         <span class="field-value">{{ role }}</span>
@@ -498,6 +503,11 @@ def _pass_context(vol, event=None):
     name       = str(vol.get('name_hi') or vol.get('name') or '').strip()
     role       = str(vol.get('role') or '').strip()
     permission = str(vol.get('permission') or '').strip()
+    aadhaar    = str(vol.get('aadhaar') or '').strip()
+    # Mask aadhaar — show only last 4
+    if aadhaar and len(aadhaar.replace(' ','')) >= 4:
+        digits = aadhaar.replace(' ','')
+        aadhaar = 'XXXX XXXX ' + digits[-4:]
     _raw_logo = fix_image_url(str(vol.get('logo_url') or event.get('logo_url') or '').strip())
     # If it's the local Render-hosted logo, read from disk directly (faster + reliable)
     if 'passflow-pass-generator.onrender.com/static/logo/' in _raw_logo:
@@ -525,7 +535,7 @@ def _pass_context(vol, event=None):
 
     return dict(
         org=org, event=event_name, date_hi=date_hi,
-        vol_id=vol_id, name=name, role=role, permission=permission,
+        vol_id=vol_id, name=name, role=role, permission=permission, aadhaar=aadhaar,
         logo_url=logo_url, bg_image_url=bg_image,
         qr_dataurl=qr_dataurl,
         note1=note1, note2=note2,

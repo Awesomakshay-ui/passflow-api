@@ -254,8 +254,8 @@ html, body {
 
 .logo-wrap {
   flex: 0 0 auto;
-  width: 46mm;
-  height: 46mm;
+  width: 40mm;
+  height: 40mm;
   border-radius: 50%;
   background: white;
   padding: 1.5mm;
@@ -276,7 +276,7 @@ html, body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.5mm;
+  gap: 1mm;
   padding-right: 2mm;
 }
 
@@ -288,7 +288,7 @@ html, body {
 
 .field-label {
   flex: 0 0 28mm;
-  font-size: 11pt;
+  font-size: 10pt;
   font-weight: 600;
   color: #404040;
 }
@@ -302,7 +302,7 @@ html, body {
 
 .field-value {
   flex: 1;
-  font-size: 15pt;
+  font-size: 13pt;
   font-weight: 700;
   color: #1A1A1A;
 }
@@ -310,6 +310,7 @@ html, body {
 .qr-col {
   flex: 0 0 auto;
   text-align: center;
+  padding-top: 1mm;
 }
 
 .qr {

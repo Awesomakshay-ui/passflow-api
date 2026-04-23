@@ -432,7 +432,7 @@ PASS_DIV_TEMPLATE = Template(r"""
   <div class="header">
     <div class="org-name">{{ org }}</div>
     {% if event %}<div><span class="event-name">{{ event }}</span></div>{% endif %}
-    {% if date_hi %}<div><span class="event-date">Valid upto: {{ date_hi }}</span></div>{% endif %}
+    {% if date_hi %}<div><span class="event-date">कार्यकर्ता पास- {{ date_hi }} तक मान्य</span></div>{% endif %}
   </div>
 
   <div class="body">

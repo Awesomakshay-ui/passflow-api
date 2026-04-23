@@ -143,7 +143,9 @@ def enrich(vol, event):
     if not v.get('logo_url'):
         v['logo_url'] = 'https://passflow-pass-generator.onrender.com/static/logo/srjbtk_logo_official.png'
     if not v.get('backside_lang')  and event.get('backside_lang'):  v['backside_lang']  = event['backside_lang']
-    if not v.get('signing_image') and event.get('signing_image'):   v['signing_image']  = event['signing_image']
+    if not v.get('signing_image')     and event.get('signing_image'):     v['signing_image']     = event['signing_image']
+    if not v.get('signing_authority') and event.get('signing_authority'): v['signing_authority'] = event['signing_authority']
+    if not v.get('signing_title')     and event.get('signing_title'):     v['signing_title']     = event['signing_title']
     if not v.get('bg_image')      and event.get('bg_image'):        v['bg_image']       = event['bg_image']
     if not v.get('backside_text') and event.get('backside_text'): v['backside_text'] = event['backside_text']
     event_id = event.get('id', '')

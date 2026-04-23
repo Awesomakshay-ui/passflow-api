@@ -273,17 +273,16 @@ html, body {
 
 .fields {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 1mm;
+  display: block;
   padding-right: 2mm;
+  padding-top: 4mm;
 }
 
 .field-row {
   display: flex;
   align-items: baseline;
   font-family: 'NotoDeva', sans-serif;
+  margin-bottom: 2.5mm;
 }
 
 .field-label {

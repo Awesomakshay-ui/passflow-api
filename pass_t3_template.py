@@ -245,7 +245,7 @@ html, body {
   left: 0;
   right: 0;
   bottom: 28mm;
-  padding: 3mm 8mm 0 8mm;
+  padding: 2mm 8mm 0 8mm;
   z-index: 2;
   display: flex;
   align-items: center;
@@ -276,7 +276,7 @@ html, body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 1.5mm;
+  gap: 0.5mm;
   padding-right: 2mm;
 }
 
@@ -302,7 +302,7 @@ html, body {
 
 .field-value {
   flex: 1;
-  font-size: 16pt;
+  font-size: 15pt;
   font-weight: 700;
   color: #1A1A1A;
 }

@@ -430,7 +430,6 @@ PASS_DIV_TEMPLATE = Template(r"""
   {% if bg_image_url %}<div class="bg-temple" style="background-image: url('{{ bg_image_url }}')"></div>{% endif %}
 
   <div class="header">
-    <div class="kartakar-label">कार्यकर्ता प्रवेश पत्र</div>
     <div class="org-name">{{ org }}</div>
     {% if event %}<div><span class="event-name">{{ event }}</span></div>{% endif %}
     {% if date_hi %}<div><span class="event-date">Valid upto: {{ date_hi }}</span></div>{% endif %}
@@ -461,7 +460,7 @@ PASS_DIV_TEMPLATE = Template(r"""
       <div class="field-row">
         <span class="field-label">अनुमति</span>
         <span class="field-colon">:</span>
-        <span class="field-value" style="font-size:13pt">{{ permission }}</span>
+        <span class="field-value">{{ permission }}</span>
       </div>
       {% endif %}
     </div>

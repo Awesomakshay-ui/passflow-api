@@ -25,6 +25,13 @@ def get_t3_renderer():
         _t3_renderer = t3
     return _t3_renderer
 
+_renderers = {}
+def get_renderer(tmpl):
+    if tmpl not in _renderers:
+        mod = __import__(f'pass_{tmpl}_template')
+        _renderers[tmpl] = mod
+    return _renderers[tmpl]
+
 # Page sizes in mm (width x height for landscape)
 PAGE_SIZES = {
     'a6':  (148, 105),
@@ -277,6 +284,12 @@ def generate_single():
 
         if template == 't3':
             buf = build_t3_buf([vol], event, backside=backside)
+        elif template in ('t4', 't5', 't6', 't7', 't8'):
+            mod = get_renderer(template)
+            fn_name = f'generate_pass_{template}'
+            qr_url = vol.get('qr_url') or vol.get('id','')
+            pdf_bytes = getattr(mod, fn_name)(vol, event, qr_url)
+            buf = io.BytesIO(pdf_bytes)
         else:
             buf = build_pdf_bytes([vol], size=size, backside=backside, template=template)
 

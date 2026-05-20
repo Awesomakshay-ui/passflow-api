@@ -21,6 +21,20 @@ def _font_url(filename):
     path = os.path.join(_FONTS_DIR, filename)
     return f"file://{path}"
 
+
+# Pass type → color + label mapping
+PASS_TYPE_CONFIG = {
+    'karyakarta':    {'color': '#0f52ba', 'label': 'कार्यकर्ता पास',    'accent': '#FFDD96'},
+    'vishesh_atithi':{'color': '#8B0000', 'label': 'विशेष अतिथि पास',  'accent': '#FFD700'},
+    'vip':           {'color': '#0A0A0A', 'label': 'VIP पास',           'accent': '#C8A04A'},
+    'press':         {'color': '#1A5C2A', 'label': 'प्रेस पास',         'accent': '#FFFFFF'},
+    'seva':          {'color': '#0F5C4A', 'label': 'सेवा पास',          'accent': '#FFDD96'},
+    'staff':         {'color': '#1A2C5C', 'label': 'स्टाफ पास',         'accent': '#FFFFFF'},
+}
+
+def get_pass_type_style(pass_type):
+    return PASS_TYPE_CONFIG.get(pass_type or 'karyakarta', PASS_TYPE_CONFIG['karyakarta'])
+
 MONTHS_HI = {
     '01': 'जनवरी', '02': 'फ़रवरी', '03': 'मार्च', '04': 'अप्रैल',
     '05': 'मई', '06': 'जून', '07': 'जुलाई', '08': 'अगस्त',
@@ -226,12 +240,13 @@ html, body {
   margin-top: 3mm;
   display: inline-block;
   padding: 0.5mm 3mm 1mm 3mm;
-  border-bottom: 0.4mm solid #C8A04A;
+  border-bottom: 0.4mm solid {{ accent_color }};
 }
 
 .event-date {
   font-family: 'NotoDeva', serif;
-  font-size: 11pt;
+  font-size: 12pt;
+  font-weight: 700;
   color: white;
   margin-top: 3mm;
   display: inline-block;
@@ -482,7 +497,7 @@ PASS_DIV_TEMPLATE = Template(r"""
   <div class="header">
     <div class="org-name">{{ org }}</div>
     {% if event %}<div><span class="event-name">{{ event }}</span></div>{% endif %}
-    {% if date_hi %}<div><span class="event-date">कार्यकर्ता पास- {{ date_hi }} तक मान्य</span></div>{% endif %}
+    {% if date_hi %}<div><span class="event-date">{{ pass_label }}- {{ date_hi }} तक मान्य</span></div>{% endif %}
   </div>
 
   <table class="body-table">
@@ -562,6 +577,13 @@ def _pass_context(vol, event=None):
         note2 = 'मंदिर परिसर में मोबाइल/कैमरा इत्यादि पूर्णतः प्रतिबंधित है।'
 
     verify_url = str(vol.get('verify_url') or '').strip()
+
+    # Pass type → dynamic color + label
+    pass_type  = str(vol.get('pass_type') or 'karyakarta').strip().lower()
+    pt_style   = get_pass_type_style(pass_type)
+    header_color = pt_style['color']
+    pass_label   = pt_style['label']
+    accent_color = pt_style['accent']
     qr_data    = f"{verify_url}/{vol_id}" if verify_url else vol_id
     qr_dataurl = make_qr_dataurl(qr_data, box_size=8)
 
@@ -572,6 +594,7 @@ def _pass_context(vol, event=None):
         qr_dataurl=qr_dataurl,
         note1=note1, note2=note2,
         signing_image=sig_img, signing_name=sig_name, signing_title=sig_title,
+        header_color=header_color, pass_label=pass_label, accent_color=accent_color,
     )
 
 

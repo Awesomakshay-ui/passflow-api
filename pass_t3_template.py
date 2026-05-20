@@ -494,9 +494,9 @@ PASS_DIV_TEMPLATE = Template(r"""
 <div class="pass">
   {% if bg_image_url %}<div class="bg-temple" style="background-image: url('{{ bg_image_url }}')"></div>{% endif %}
 
-  <div class="header">
+  <div class="header" style="background: linear-gradient(180deg, {{ header_color_light }} 0%, {{ header_color }} 100%) !important;">
     <div class="org-name">{{ org }}</div>
-    {% if event %}<div><span class="event-name">{{ event }}</span></div>{% endif %}
+    {% if event %}<div><span class="event-name" style="color: {{ accent_color }} !important; border-bottom-color: {{ accent_color }} !important;">{{ event }}</span></div>{% endif %}
     {% if date_hi %}<div><span class="event-date">{{ pass_label }}- {{ date_hi }} तक मान्य</span></div>{% endif %}
   </div>
 
@@ -582,6 +582,15 @@ def _pass_context(vol, event=None):
     pass_type  = str(vol.get('pass_type') or 'karyakarta').strip().lower()
     pt_style   = get_pass_type_style(pass_type)
     header_color = pt_style['color']
+    # Lighter version of header for gradient top
+    header_color_light = {
+        '#0f52ba': '#1a6fd4',
+        '#8B0000': '#B22222',
+        '#0A0A0A': '#2A2A2A',
+        '#0F5C4A': '#1A7A62',
+        '#1A5C2A': '#247A38',
+        '#1A2C5C': '#243D7A',
+    }.get(header_color, header_color)
     pass_label   = pt_style['label']
     accent_color = pt_style['accent']
     qr_data    = f"{verify_url}/{vol_id}" if verify_url else vol_id
@@ -594,7 +603,7 @@ def _pass_context(vol, event=None):
         qr_dataurl=qr_dataurl,
         note1=note1, note2=note2,
         signing_image=sig_img, signing_name=sig_name, signing_title=sig_title,
-        header_color=header_color, pass_label=pass_label, accent_color=accent_color,
+        header_color=header_color, header_color_light=header_color_light, pass_label=pass_label, accent_color=accent_color,
     )
 
 

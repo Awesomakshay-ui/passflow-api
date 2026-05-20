@@ -523,7 +523,7 @@ PASS_DIV_TEMPLATE = Template(r"""
     </tr>
   </table>
 
-  <div class="footer">
+  <div class="footer" style="background: linear-gradient(180deg, {{ header_color_light }} 0%, {{ header_color }} 100%) !important;">
     <div class="notes">
       {% if note1 %}<div class="note">{{ note1 }}</div>{% endif %}
       {% if note2 %}<div class="note">{{ note2 }}</div>{% endif %}
@@ -585,9 +585,9 @@ def _pass_context(vol, event=None):
     # Lighter version of header for gradient top
     header_color_light = {
         '#0f52ba': '#1a6fd4',
-        '#8B0000': '#B22222',
+        '#8B0000': '#C0392B',
         '#0A0A0A': '#2A2A2A',
-        '#0F5C4A': '#1A7A62',
+        '#0F5C4A': '#1A9A7A',
         '#1A5C2A': '#247A38',
         '#1A2C5C': '#243D7A',
     }.get(header_color, header_color)

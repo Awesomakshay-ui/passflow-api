@@ -24,12 +24,12 @@ def _font_url(filename):
 
 # Pass type → color + label mapping
 PASS_TYPE_CONFIG = {
-    'karyakarta':    {'color': '#0f52ba', 'label': 'कार्यकर्ता पास',    'accent': '#FFDD96'},
-    'vishesh_atithi':{'color': '#8B0000', 'label': 'विशेष अतिथि पास',  'accent': '#FFD700'},
-    'vip':           {'color': '#0A0A0A', 'label': 'VIP पास',           'accent': '#C8A04A'},
-    'press':         {'color': '#1A5C2A', 'label': 'प्रेस पास',         'accent': '#FFFFFF'},
-    'seva':          {'color': '#0F5C4A', 'label': 'सेवा पास',          'accent': '#FFDD96'},
-    'staff':         {'color': '#1A2C5C', 'label': 'स्टाफ पास',         'accent': '#FFFFFF'},
+    'karyakarta':    {'color': '#0f52ba', 'label': 'कार्यकर्ता पास',   'accent': '#FFDD96', 'validity': 'तक मान्य'},
+    'vishesh_atithi':{'color': '#8B0000', 'label': 'विशेष अतिथि पास', 'accent': '#FFD700', 'validity': 'को मान्य'},
+    'vip':           {'color': '#0A0A0A', 'label': 'VIP पास',          'accent': '#C8A04A', 'validity': 'तक मान्य'},
+    'press':         {'color': '#1A5C2A', 'label': 'प्रेस पास',        'accent': '#FFFFFF', 'validity': 'को मान्य'},
+    'seva':          {'color': '#0F5C4A', 'label': 'सेवा पास',         'accent': '#FFDD96', 'validity': 'तक मान्य'},
+    'staff':         {'color': '#1A2C5C', 'label': 'स्टाफ पास',        'accent': '#FFFFFF', 'validity': 'तक मान्य'},
 }
 
 def get_pass_type_style(pass_type):
@@ -497,7 +497,7 @@ PASS_DIV_TEMPLATE = Template(r"""
   <div class="header" style="background: linear-gradient(180deg, {{ header_color_light }} 0%, {{ header_color }} 100%) !important;">
     <div class="org-name">{{ org }}</div>
     {% if event %}<div><span class="event-name" style="color: {{ accent_color }} !important; border-bottom-color: {{ accent_color }} !important;">{{ event }}</span></div>{% endif %}
-    {% if date_hi %}<div><span class="event-date">{{ pass_label }}- {{ date_hi }} तक मान्य</span></div>{% endif %}
+    {% if date_hi %}<div><span class="event-date">{{ pass_label }}- {{ date_hi }} {{ validity_sfx }}</span></div>{% endif %}
   </div>
 
   <table class="body-table">
@@ -593,6 +593,7 @@ def _pass_context(vol, event=None):
     }.get(header_color, header_color)
     pass_label   = pt_style['label']
     accent_color = pt_style['accent']
+    validity_sfx = pt_style.get('validity', 'तक मान्य')
     qr_data    = f"{verify_url}/{vol_id}" if verify_url else vol_id
     qr_dataurl = make_qr_dataurl(qr_data, box_size=8)
 
@@ -603,7 +604,7 @@ def _pass_context(vol, event=None):
         qr_dataurl=qr_dataurl,
         note1=note1, note2=note2,
         signing_image=sig_img, signing_name=sig_name, signing_title=sig_title,
-        header_color=header_color, header_color_light=header_color_light, pass_label=pass_label, accent_color=accent_color,
+        header_color=header_color, header_color_light=header_color_light, pass_label=pass_label, accent_color=accent_color, validity_sfx=validity_sfx,
     )
 
 

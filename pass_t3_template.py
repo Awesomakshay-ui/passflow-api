@@ -24,7 +24,7 @@ def _font_url(filename):
 
 # Pass type → color + label mapping
 PASS_TYPE_CONFIG = {
-    'karyakarta':    {'color': '#0f52ba', 'label': 'कार्यकर्ता पास',   'accent': '#FFDD96', 'validity': 'तक मान्य'},
+    'karyakarta':    {'color': '#0f52ba', 'label': 'कार्यकर्ता पास',   'accent': '#FFD700', 'validity': 'तक मान्य'},
     'vishesh_atithi':{'color': '#8B0000', 'label': 'विशेष अतिथि पास', 'accent': '#FFD700', 'validity': 'को मान्य'},
     'vip':           {'color': '#0A0A0A', 'label': 'VIP पास',          'accent': '#C8A04A', 'validity': 'तक मान्य'},
     'press':         {'color': '#1A5C2A', 'label': 'प्रेस पास',        'accent': '#FFFFFF', 'validity': 'को मान्य'},
@@ -236,7 +236,7 @@ html, body {
   font-family: 'NotoDeva', serif;
   font-size: 15pt;
   font-weight: 700;
-  color: #FFDD96;
+  color: #FFD700;
   margin-top: 3mm;
   display: inline-block;
   padding: 0.5mm 3mm 1mm 3mm;
@@ -445,7 +445,7 @@ html, body {
 
 .note::before {
   content: '* ';
-  color: #FFDD96;
+  color: #FFD700;
   font-weight: 700;
 }
 
@@ -474,16 +474,18 @@ html, body {
 
 .sign-title {
   font-family: 'NotoDeva', sans-serif;
-  font-size: 9pt;
-  color: #E8E8E8;
-  margin-top: 0.3mm;
+  font-size: 10pt;
+  font-weight: 700;
+  color: #FFDD96;
+  margin-top: 0.5mm;
+  letter-spacing: 0.3pt;
 }
 
 .sign-issuing {
   font-family: 'Poppins', sans-serif;
   font-size: 8pt;
   font-weight: 700;
-  color: #FFDD96;
+  color: #FFD700;
   letter-spacing: 0.5pt;
   margin-bottom: 1mm;
 }

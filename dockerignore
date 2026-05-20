@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+.env
+*.log
+.wrangler/
+.claude/
+node_modules/
+*.pdf
+deploy_cloud_run.bat

@@ -517,8 +517,13 @@ PASS_DIV_TEMPLATE = Template(r"""
           <tr><td class="fl">आई. डी. कोड</td><td class="fc">:</td><td class="fv id-val">{{ vol_id }}</td></tr>
           <tr><td class="fl">नाम</td><td class="fc">:</td><td class="fv">{{ name }}</td></tr>
           <tr><td class="fl">आधार</td><td class="fc">:</td><td class="fv">{{ aadhaar }}</td></tr>
-          <tr><td class="fl">दायित्व</td><td class="fc">:</td><td class="fv">{{ role }}</td></tr>
+          {% if pass_type == 'vishesh_atithi' or pass_type == 'press' %}
+          {% if mobile %}<tr><td class="fl">मोबाइल</td><td class="fc">:</td><td class="fv">{{ mobile }}</td></tr>{% endif %}
+          {% if permission %}<tr><td class="fl">आमंत्रण</td><td class="fc">:</td><td class="fv">{{ permission }}</td></tr>{% endif %}
+          {% else %}
+          {% if role %}<tr><td class="fl">दायित्व</td><td class="fc">:</td><td class="fv">{{ role }}</td></tr>{% endif %}
           {% if permission %}<tr><td class="fl">अनुमति</td><td class="fc">:</td><td class="fv">{{ permission }}</td></tr>{% endif %}
+          {% endif %}
         </table>
       </td>
       <td class="qr-cell">
@@ -552,6 +557,7 @@ def _pass_context(vol, event=None):
     date_raw   = str(vol.get('expiry') or event.get('expiry_date') or '').strip()
     date_hi    = format_date_hi(date_raw)
     vol_id     = str(vol.get('id') or '').strip()
+    mobile     = str(vol.get('mobile') or '').replace('+91','').strip()
     name       = str(vol.get('name_hi') or vol.get('name') or '').strip()
     role       = str(vol.get('role') or '').strip()
     permission = str(vol.get('permission') or '').strip()
@@ -604,12 +610,13 @@ def _pass_context(vol, event=None):
 
     return dict(
         org=org, event=event_name, date_hi=date_hi,
-        vol_id=vol_id, name=name, role=role, permission=permission, aadhaar=aadhaar,
+        vol_id=vol_id, name=name, role=role, permission=permission, aadhaar=aadhaar, mobile=mobile,
         logo_url=logo_url, bg_image_url=bg_image,
         qr_dataurl=qr_dataurl,
         note1=note1, note2=note2,
         signing_image=sig_img, signing_name=sig_name, signing_title=sig_title,
         header_color=header_color, header_color_light=header_color_light, pass_label=pass_label, accent_color=accent_color, validity_sfx=validity_sfx,
+        pass_type=pass_type,
     )
 
 

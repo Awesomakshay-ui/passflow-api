@@ -284,7 +284,7 @@ def generate_single():
 
         if template == 't3':
             buf = build_t3_buf([vol], event, backside=backside)
-        elif template in ('t4', 't5', 't6', 't7', 't8'):
+        elif template in ('t4', 't5', 't6', 't7', 't8', 't9', 't10', 't11'):
             mod = get_renderer(template)
             fn_name = f'generate_pass_{template}'
             qr_url = vol.get('qr_url') or vol.get('id','')

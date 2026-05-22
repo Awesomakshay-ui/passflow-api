@@ -195,7 +195,10 @@ html, body {
   background: linear-gradient(180deg, #1a6fd4 0%, #0f52ba 100%);
   border-radius: 0 0 50% 50% / 0 0 20% 20%;
   z-index: 1;
-  padding: 5mm 10mm 0 10mm;
+  padding: 8mm 10mm 0 10mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   text-align: center;
 }
 
@@ -229,7 +232,7 @@ html, body {
   font-weight: 700;
   color: white;
   line-height: 1.0;
-  margin-top: 1mm;
+  margin-top: 0mm;
 }
 
 .event-name {
@@ -237,7 +240,7 @@ html, body {
   font-size: 15pt;
   font-weight: 700;
   color: #FFD700;
-  margin-top: 3mm;
+  margin-top: 4mm;
   display: inline-block;
   padding: 0.5mm 3mm 1mm 3mm;
   border-bottom: 0.4mm solid {{ accent_color }};
@@ -248,7 +251,7 @@ html, body {
   font-size: 12pt;
   font-weight: 700;
   color: white;
-  margin-top: 3mm;
+  margin-top: 4mm;
   display: inline-block;
   padding: 0.3mm 4mm 0.8mm 4mm;
   border-bottom: 0.3mm solid #C8A04A;

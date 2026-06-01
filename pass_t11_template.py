@@ -282,24 +282,25 @@ body {{
   vertical-align: middle;
 }}
 .fl {{
-  font-family: 'NotoDeva', serif;
+  font-family: 'NotoDeva', sans-serif;
   font-size: 10pt;
-  font-weight: normal;
-  color: #555;
+  font-weight: 600;
+  color: #404040;
   white-space: nowrap;
   padding-right: 2mm;
   width: 28mm;
 }}
 .fc {{
-  font-size: 10pt;
-  color: #555;
+  font-size: 12pt;
+  font-weight: 700;
+  color: #606060;
   padding: 0 1mm;
   width: 4mm;
 }}
 .fv {{
-  font-family: 'NotoDeva', serif;
+  font-family: 'NotoDeva', sans-serif;
   font-size: 13pt;
-  font-weight: bold;
+  font-weight: 700;
   color: #1A1A1A;
 }}
 
@@ -368,10 +369,10 @@ body {{
   gap: 1.5mm;
 }}
 .note {{
-  font-family: 'NotoDeva', serif;
-  font-size: 8pt;
-  color: rgba(255,255,255,0.85);
-  line-height: 1.4;
+  font-family: 'NotoDeva', sans-serif;
+  font-size: 9pt;
+  color: white;
+  line-height: 1.5;
 }}
 
 .authority {{
@@ -398,11 +399,12 @@ body {{
   color: #fff;
 }}
 .sign-title {{
-  font-family: 'NotoDeva', serif;
+  font-family: 'NotoDeva', sans-serif;
   font-size: 10pt;
-  font-weight: bold;
+  font-weight: 700;
   color: #FFDD96;
   margin-top: 0.5mm;
+  letter-spacing: 0.3pt;
   letter-spacing: 0.3pt;
 }}
 """.format(

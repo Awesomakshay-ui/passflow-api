@@ -142,6 +142,16 @@ def build_t3_buf(vols, event, backside=False):
 
 def enrich(vol, event):
     v = dict(vol)
+    pass_type = str(v.get('pass_type') or '').strip().lower().replace(' ', '_').replace('-', '_')
+    if pass_type == 'vishesh_atithi':
+        mobile = str(v.get('mobile') or '').strip()
+        v['role'] = ''
+        v['daayitva'] = ''
+        v['dayitva'] = ''
+        v['designation'] = ''
+        v['mobile'] = mobile
+        v['display_label'] = 'Mobile'
+        v['display_value'] = mobile
     if not v.get('event_label')   and event.get('name'):          v['event_label']   = event['name']
     if not v.get('expiry')        and event.get('expiry_date'):   v['expiry']        = event['expiry_date']
     if not v.get('org')           and event.get('org_name'):      v['org']           = event['org_name']
@@ -251,6 +261,10 @@ def generate_pdf():
         event = data.get('event', {})
         if not vols: return jsonify({"error": "No volunteers"}), 400
         if len(vols) > 3000: return jsonify({"error": "Max 3000"}), 400
+        pass_type_override = data.get('pass_type_override', '').strip().lower()
+        # Apply override before enrichment so pass-type-specific cleanup runs.
+        if pass_type_override:
+            vols = [dict(v, pass_type=pass_type_override) for v in vols]
         enriched = [enrich(v, event) for v in vols]
         size     = data.get('size', 'a6').lower()
         backside = bool(data.get('backside', False))
@@ -276,6 +290,9 @@ def generate_single():
         vol   = data.get('volunteer', {})
         event = data.get('event', {})
         if not vol: return jsonify({"error": "No volunteer"}), 400
+        pass_type_override = data.get('pass_type_override', '').strip().lower()
+        if pass_type_override:
+            vol = dict(vol, pass_type=pass_type_override)
         vol = enrich(vol, event)
         size     = data.get('size', 'a6').lower()
         backside = bool(data.get('backside', False))

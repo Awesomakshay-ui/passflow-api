@@ -142,16 +142,6 @@ def build_t3_buf(vols, event, backside=False):
 
 def enrich(vol, event):
     v = dict(vol)
-    pass_type = str(v.get('pass_type') or '').strip().lower().replace(' ', '_').replace('-', '_')
-    if pass_type == 'vishesh_atithi':
-        mobile = str(v.get('mobile') or '').strip()
-        v['role'] = ''
-        v['daayitva'] = ''
-        v['dayitva'] = ''
-        v['designation'] = ''
-        v['mobile'] = mobile
-        v['display_label'] = 'Mobile'
-        v['display_value'] = mobile
     if not v.get('event_label')   and event.get('name'):          v['event_label']   = event['name']
     if not v.get('expiry')        and event.get('expiry_date'):   v['expiry']        = event['expiry_date']
     if not v.get('org')           and event.get('org_name'):      v['org']           = event['org_name']
@@ -262,10 +252,11 @@ def generate_pdf():
         if not vols: return jsonify({"error": "No volunteers"}), 400
         if len(vols) > 3000: return jsonify({"error": "Max 3000"}), 400
         pass_type_override = data.get('pass_type_override', '').strip().lower()
-        # Apply override before enrichment so pass-type-specific cleanup runs.
-        if pass_type_override:
-            vols = [dict(v, pass_type=pass_type_override) for v in vols]
         enriched = [enrich(v, event) for v in vols]
+        # Apply override to all volunteers if set
+        if pass_type_override:
+            for v in enriched:
+                v['pass_type'] = pass_type_override
         size     = data.get('size', 'a6').lower()
         backside = bool(data.get('backside', False))
         template = data.get('template', 't1').lower()
@@ -273,6 +264,27 @@ def generate_pdf():
 
         if template == 't3':
             buf = build_t3_buf(enriched, event, backside=backside)
+        elif template in ('t4', 't5', 't6', 't7', 't8', 't9', 't10', 't11'):
+            mod = get_renderer(template)
+            fn_multi = f'render_{template}_multi_pdf'
+            fn_single = f'generate_pass_{template}'
+            if hasattr(mod, fn_multi):
+                pdf_bytes = getattr(mod, fn_multi)(enriched, event)
+            else:
+                # fallback: concatenate single passes
+                from pypdf import PdfWriter, PdfReader
+                writer = PdfWriter()
+                for v in enriched:
+                    qr_url = v.get('qr_url') or v.get('id','')
+                    pb = getattr(mod, fn_single)(v, event, qr_url)
+                    for pg in PdfReader(io.BytesIO(pb)).pages:
+                        writer.add_page(pg)
+                buf = io.BytesIO()
+                writer.write(buf)
+                buf.seek(0)
+                pdf_bytes = None
+            if pdf_bytes is not None:
+                buf = io.BytesIO(pdf_bytes)
         else:
             buf = build_pdf_bytes(enriched, size=size, backside=backside, template=template)
 
@@ -290,9 +302,6 @@ def generate_single():
         vol   = data.get('volunteer', {})
         event = data.get('event', {})
         if not vol: return jsonify({"error": "No volunteer"}), 400
-        pass_type_override = data.get('pass_type_override', '').strip().lower()
-        if pass_type_override:
-            vol = dict(vol, pass_type=pass_type_override)
         vol = enrich(vol, event)
         size     = data.get('size', 'a6').lower()
         backside = bool(data.get('backside', False))

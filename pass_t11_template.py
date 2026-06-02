@@ -130,7 +130,7 @@ body {{
   position: relative;
   overflow: hidden;
   background: #F4F0E5;
-  font-family: 'NotoDeva', serif;
+  font-family: 'Poppins', sans-serif;
 }}
 
 /* ── Header ── */
@@ -165,7 +165,7 @@ body {{
   border-radius: inherit;
 }}
 
-/* Saint photo — absolute top-left of header */
+/* Saint photo — scaled up to be larger than logo */
 .saint-photo-wrap {{
   position: absolute;
   left: 8mm;
@@ -174,8 +174,8 @@ body {{
   z-index: 2;
 }}
 .saint-photo-circle {{
-  width: 28mm;
-  height: 28mm;
+  width: 45mm;
+  height: 45mm;
   border-radius: 50%;
   border: 1mm solid #FFDD96;
   background: #fff;
@@ -192,7 +192,7 @@ body {{
   border-radius: 50%;
 }}
 .saint-placeholder {{
-  font-family: 'NotoDeva', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 14pt;
   font-weight: bold;
   color: #0F52BA;
@@ -241,17 +241,17 @@ body {{
   display: table;
 }}
 
-/* Logo cell */
+/* Logo cell — scaled down down so it is smaller than saint photo */
 .logo-cell {{
   display: table-cell;
-  width: 44mm;
+  width: 36mm;
   vertical-align: middle;
   text-align: center;
   padding: 2mm 4mm 2mm 2mm;
 }}
 .logo-circle {{
-  width: 40mm;
-  height: 40mm;
+  width: 30mm;
+  height: 30mm;
   border-radius: 50%;
   background: #F4F0E5;
   border: 0.5mm solid #ccc;
@@ -282,13 +282,13 @@ body {{
   vertical-align: middle;
 }}
 .fl {{
-  font-family: 'NotoDeva', sans-serif;
-  font-size: 10pt;
+  font-family: 'Poppins', sans-serif;
+  font-size: 11pt;
   font-weight: 600;
   color: #404040;
   white-space: nowrap;
   padding-right: 2mm;
-  width: 28mm;
+  width: 34mm;
 }}
 .fc {{
   font-size: 12pt;
@@ -298,8 +298,8 @@ body {{
   width: 4mm;
 }}
 .fv {{
-  font-family: 'NotoDeva', sans-serif;
-  font-size: 13pt;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12pt;
   font-weight: 700;
   color: #1A1A1A;
 }}
@@ -331,7 +331,7 @@ body {{
   border-radius: 50%;
 }}
 .vol-photo-placeholder {{
-  font-family: 'NotoDeva', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 12pt;
   font-weight: bold;
   color: #888;
@@ -405,7 +405,6 @@ body {{
   color: #FFDD96;
   margin-top: 0.5mm;
   letter-spacing: 0.3pt;
-  letter-spacing: 0.3pt;
 }}
 """.format(
     deva_r=_font_url('NotoSansDevanagari-Regular.ttf'),
@@ -447,19 +446,14 @@ PASS_DIV = Template("""
         </div>
       </td>
 
-      <!-- Fields -->
+      <!-- Fields (English labels applied) -->
       <td class="fields-cell">
         <table class="fields-table">
-          <tr><td class="fl">आई. डी. कोड</td><td class="fc">:</td><td class="fv">{{ vol_id }}</td></tr>
-          <tr><td class="fl">नाम</td><td class="fc">:</td><td class="fv">{{ name }}</td></tr>
-          {% if aadhaar %}<tr><td class="fl">आधार</td><td class="fc">:</td><td class="fv">{{ aadhaar }}</td></tr>{% endif %}
-          {% if pass_type == 'vishesh_atithi' or pass_type == 'press' %}
-            {% if mobile %}<tr><td class="fl">मोबाइल</td><td class="fc">:</td><td class="fv">{{ mobile }}</td></tr>{% endif %}
-            {% if permission %}<tr><td class="fl">आमंत्रण</td><td class="fc">:</td><td class="fv">{{ permission }}</td></tr>{% endif %}
-          {% else %}
-            {% if role %}<tr><td class="fl">दायित्व</td><td class="fc">:</td><td class="fv">{{ role }}</td></tr>{% endif %}
-            {% if permission %}<tr><td class="fl">अनुमति</td><td class="fc">:</td><td class="fv">{{ permission }}</td></tr>{% endif %}
-          {% endif %}
+          <tr><td class="fl">ID Code</td><td class="fc">:</td><td class="fv">{{ vol_id }}</td></tr>
+          <tr><td class="fl">Name</td><td class="fc">:</td><td class="fv">{{ name }}</td></tr>
+          {% if aadhaar %}<tr><td class="fl">Aadhaar</td><td class="fc">:</td><td class="fv">{{ aadhaar }}</td></tr>{% endif %}
+          {% if mobile %}<tr><td class="fl">Mobile Number</td><td class="fc">:</td><td class="fv">{{ mobile }}</td></tr>{% endif %}
+          {% if permission %}<tr><td class="fl">Address</td><td class="fc">:</td><td class="fv">{{ permission }}</td></tr>{% endif %}
         </table>
       </td>
 
@@ -501,7 +495,6 @@ def _pass_context_t11(vol, event=None):
     date_hi    = format_date_hi(date_raw)
     vol_id     = str(vol.get('id') or '').strip()
     name       = str(vol.get('name_hi') or vol.get('name') or '').strip()
-    role       = str(vol.get('role') or '').strip()
     permission = str(vol.get('permission') or '').strip()
     aadhaar    = str(vol.get('aadhaar') or '').strip()
     mobile     = str(vol.get('mobile') or '').replace('+91', '').strip()
@@ -565,7 +558,7 @@ def _pass_context_t11(vol, event=None):
 
     return dict(
         org=org, event=event_name, date_hi=date_hi,
-        vol_id=vol_id, name=name, role=role, permission=permission,
+        vol_id=vol_id, name=name, permission=permission,
         aadhaar=aadhaar, mobile=mobile,
         logo_data=logo_data, bg_image_url=bg_image,
         saint_photo=saint_photo, saint_initials=saint_initials,
